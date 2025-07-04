@@ -26,6 +26,13 @@ export default {
     search_searching: 'Search in progress...',
     search_start: 'To start searching',
     search_nofound: 'Nothing was found according to your request.',
+    search_aggregated: 'Aggregated search',
+    search_aggregated_descr: 'Combines results from all available sources into one convenient list',
+    search_aggregated_all_sources: 'All sources',
+    search_aggregated_movies: 'Movies',
+    search_aggregated_series: 'TV Series',
+    search_aggregated_mixed: 'Mixed',
+    search_aggregated_from_source: 'from',
 
     full_genre: 'Genre',
     full_production: 'Production',
@@ -1014,6 +1021,9 @@ export default {
     title_upcoming_episodes: 'Upcoming episode releases',
     settings_rest_cache_images: 'Image cache',
     settings_rest_cache_images_descr: 'Cache posters and backgrounds to local storage',
+    settings_search: 'Search',
+    settings_search_aggregated: 'Aggregated search',
+    settings_search_aggregated_descr: 'Combines results from all available sources into one convenient list',
 
     settings_player_rewind_title: 'Rewind',
     settings_player_rewind_descr: 'Rewind interval in seconds',

@@ -23,6 +23,14 @@ let html = `<div>
         <div class="settings-param__descr">#{settings_rest_cache_images_descr}</div>
     </div>
 
+    <div class="settings-param-title"><span>#{settings_search}</span></div>
+
+    <div class="settings-param selector" data-type="toggle" data-name="aggregated_search">
+        <div class="settings-param__name">#{settings_search_aggregated}</div>
+        <div class="settings-param__value"></div>
+        <div class="settings-param__descr">#{settings_search_aggregated_descr}</div>
+    </div>
+
     <div class="settings-param-title"><span>#{settings_rest_screensaver}</span></div>
 
     <div class="settings-param selector" data-type="toggle" data-name="screensaver">

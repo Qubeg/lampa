@@ -215,8 +215,6 @@ function task(call){
         puts = puts.filter((element, index) => {
             return puts.indexOf(element) === index
         })
-        
-        console.log('Plugins','load list:', puts)
 
         _awaits = puts
 

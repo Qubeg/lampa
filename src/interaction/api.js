@@ -6,6 +6,7 @@ import Arrays from '../utils/arrays'
 import Storage from '../utils/storage'
 import TMDB from '../utils/api/tmdb'
 import CUB  from '../utils/api/cub'
+import Aggregated from '../utils/api/aggregated'
 import Manifest from '../utils/manifest'
 import Account from '../utils/account'
 
@@ -14,7 +15,8 @@ import Account from '../utils/account'
  */
 let sources = {
     tmdb: TMDB,
-    cub: CUB
+    cub: CUB,
+    aggregated: Aggregated
 }
 
 /**
@@ -22,6 +24,7 @@ let sources = {
  */
 Object.defineProperty(sources, 'tmdb', { get: ()=> TMDB })
 Object.defineProperty(sources, 'cub', { get: ()=> CUB })
+Object.defineProperty(sources, 'aggregated', { get: ()=> Aggregated })
 
 let network = new Reguest()
 
@@ -37,12 +40,20 @@ function source(params){
 function availableDiscovery(){
     let list   = []
     let active = Storage.get('source','tmdb')
+    let enable_aggregated = Storage.get('aggregated_search', true)
+
+    if(enable_aggregated && sources.aggregated && sources.aggregated.discovery) {
+        list.push(sources.aggregated.discovery())
+    }
 
     for(let key in sources){
         console.log('Api','discovery check:',key, sources[key].discovery ? true : false, typeof sources[key].discovery)
 
-        if(sources[key].discovery) {
-            if (key === active) list.splice(0, 0, sources[key].discovery())
+        if(sources[key].discovery && key !== 'aggregated') {
+            if (key === active) {
+                let insert_position = enable_aggregated ? 1 : 0
+                list.splice(insert_position, 0, sources[key].discovery())
+            }
             else list.push(sources[key].discovery())
         }
     }

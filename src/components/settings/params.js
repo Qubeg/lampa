@@ -496,11 +496,10 @@ function field(name){
     return Storage.get(name, defaults[name] + '')
 }
 
-
 /**
-     * Добовляем селекторы
-     */
- select('interface_size',{
+* Добавляем селекторы
+*/
+select('interface_size',{
     'small': '#{settings_param_interface_size_small}',
     'normal': '#{settings_param_interface_size_normal}',
     'bigger': '#{settings_param_interface_size_bigger}'
@@ -676,7 +675,6 @@ select('time_offset', {
     'n10': '10',
 }, 'n0')
 
-
 select('video_quality_default',{
     '480': '480p',
     '720': '720p',
@@ -684,7 +682,6 @@ select('video_quality_default',{
     '1440': '1440p',
     '2160': '2160p',
 },'1080')
-
 
 select('player_launch_trailers',{
     'inner': '#{settings_param_player_inner}',
@@ -700,7 +697,7 @@ Manifest.cub_mirrors.forEach((mirror)=>{
 select('cub_domain', mirrors_select, Manifest.cub_domain)
 
 /**
- * Добовляем триггеры
+ * Добавляем триггеры
  */
 trigger('animation',true)
 trigger('background',true)
@@ -720,6 +717,7 @@ trigger('proxy_tmdb', true)
 trigger('proxy_tmdb_auto', true)
 trigger('proxy_other', true)
 trigger('parse_in_search', false)
+trigger('aggregated_search', true)
 trigger('subtitles_start', false)
 trigger('helper', true)
 trigger('light_version', false)
