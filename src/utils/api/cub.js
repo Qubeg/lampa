@@ -14,9 +14,7 @@ import TimeTable from '../../utils/timetable'
 import Episode from '../../interaction/episode'
 import Manifest from '../manifest'
 
-
 let network   = new Reguest()
-
 
 function url(u, params = {}){
     if(params.genres && u.indexOf('genre') == -1)  u = add(u, 'genre='+params.genres)
@@ -176,12 +174,6 @@ function category(params = {}, oncomplite, onerror){
     let parts_data  = [
         (call)=>{
             let json = {results: books, title: params.url == 'tv' ? Lang.translate('title_continue') : Lang.translate('title_watched')}
-
-            if(params.url == 'tv'){
-                json.ad    = 'notice',
-                json.type  = params.url
-            }
-
             call(json)
         },
         (call)=>{
@@ -205,12 +197,6 @@ function category(params = {}, oncomplite, onerror){
         (call)=>{
             get('?cat='+params.url+'&sort=now_playing'+airdate,params,(json)=>{
                 json.title = Lang.translate('title_now_watch')
-
-                if(params.url == 'tv'){
-                    json.ad    = 'bot'
-                    json.type  = params.url
-                }
-
                 call(json)
             },call)
         },

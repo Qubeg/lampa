@@ -1115,11 +1115,6 @@ export default {
     parental_control_input_error: 'You entered an incorrect PIN code',
     title_worth_rewatch: 'Worth a rewatch',
 
-    ad_disable: 'By subscribing to CUB Premium, you will forget about advertising.',
-    ad_after: 'Advertising via',
-    ad: 'Advertising',
-    ad_skip: 'Skip',
-    ad_continue_after: 'Viewing will start in',
     settings_parser_prowlarr_link_descr: 'Provide a link to the Prowlarr server',
     settings_parser_prowlarr_key_descr: 'Located in the Prowlarr settings tab in the general category',
     settings_player_torrent_type: 'Player type for torrents',
@@ -1178,5 +1173,4 @@ export default {
     install_extension_rule_5: '- Install only plugins from trusted sources. If you have any doubts about the security or legality of a plugin, it is better to refrain from installing it.',
     install_extension_rule_6: 'LAMPA does not support or endorse plugins related to pirated content.',
     install_extension_rule_7: 'By proceeding, you confirm that you understand these risks.',
-    ad_plugin: 'Advertisement from the plugin',
 }

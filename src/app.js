@@ -75,7 +75,6 @@ import Developer from './interaction/developer'
 import DeviceInput from './utils/device_input'
 import AppWorker from './utils/worker'
 import Theme from './utils/theme'
-import AdManager from './interaction/ad/manager'
 import DB from './utils/db'
 import NavigationBar from './interaction/navigation_bar'
 import Endless from './interaction/endless'
@@ -140,9 +139,7 @@ Arrays.extend(window.lampa_settings,{
         discuss: false,
         ai: false,
         subscribe: false,
-        blacklist: false,
         persons: false,
-        ads: false,
         trailers: false,
         install_proxy: false
     },
@@ -432,7 +429,6 @@ function startApp(){
     Parser.init()
     WebOSLauncher.init()
     Theme.init()
-    AdManager.init()
     NavigationBar.init()
     Demo.init()
     Speedtest.init()

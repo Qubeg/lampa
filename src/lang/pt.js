@@ -1100,11 +1100,6 @@ export default {
     parental_control_input_error: 'Você digitou um código PIN incorreto',
     title_worth_rewatch: 'Vale a pena assistir novamente',
 
-    ad_disable: 'Ao assinar o CUB Premium, você esquecerá a publicidade.',
-    ad_after: 'Publicidade via',
-    ad: 'Anúncio',
-    ad_skip: 'Pular',
-    ad_continue_after: 'A visualização começará em',
     settings_parser_prowlarr_link_descr: 'Forneça um link para o servidor Prowlarr',
     settings_parser_prowlarr_key_descr: 'Localizado na guia de configurações do Prowlarr na categoria geral',
     settings_player_torrent_type: 'Tipo de player para torrents',
@@ -1163,5 +1158,4 @@ export default {
     install_extension_rule_5: '- Instale apenas plug-ins de fontes confiáveis. Se você tiver dúvidas sobre a segurança ou legalidade de um plug-in, é melhor não instalá-lo.',
     install_extension_rule_6: 'O LAMPA não apoia nem aprova plug-ins relacionados a conteúdo pirata.',
     install_extension_rule_7: 'Ao continuar, você confirma que compreende esses riscos.',
-    ad_plugin: 'Anúncio do plugin',
 }

@@ -12,7 +12,6 @@ import Api from '../../interaction/api'
 import TimeTable from '../../utils/timetable'
 import Episode from '../../interaction/episode'
 
-
 let network   = new Reguest()
 let menu_list = []
 
@@ -231,11 +230,6 @@ function category(params = {}, oncomplite, onerror){
         (call)=>{
             let json = {results: books,title: params.url == 'tv' ? Lang.translate('title_continue') : Lang.translate('title_watched')}
 
-            if(params.url == 'tv'){
-                json.ad    = 'notice',
-                json.type  = params.url
-            }
-
             call(json)
         },
         (call)=>{
@@ -269,11 +263,6 @@ function category(params = {}, oncomplite, onerror){
         (call)=>{
             get(params.url == 'movie' ? 'trending/movie/week' : 'trending/tv/week',params,(json)=>{
                 json.title = Lang.translate('title_popular')
-
-                if(params.url == 'tv'){
-                    json.ad    = 'bot'
-                    json.type  = params.url
-                }
 
                 call(json)
             },call)
