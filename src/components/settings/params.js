@@ -7,10 +7,27 @@ import Controller from '../../interaction/controller'
 import Subscribe from '../../utils/subscribe'
 import Lang from '../../utils/lang'
 import Manifest from '../../utils/manifest'
+import Noty from '../../interaction/noty'
 
 let values   = {}
 let defaults = {}
 let listener = Subscribe()
+
+const reloadParams = [
+    'disable_dmca',
+    'disable_trailers'
+]
+
+/**
+ * Перезагрузка приложения с уведомлением
+ */
+function reloadAppWithNotification(){
+    Noty.show(Lang.translate('settings_rest_reload_app'))
+    
+    setTimeout(()=>{
+        window.location.reload()
+    }, 3000)
+}
 
 /**
  * Запуск
@@ -307,6 +324,10 @@ function bind(elems, elems_html){
 
                 update(elem,elems,elems_html)
 
+                if(reloadParams.includes(name)){
+                    reloadAppWithNotification()
+                }
+
                 if(onChange) onChange(value)
         }
 
@@ -320,6 +341,10 @@ function bind(elems, elems_html){
                 Storage.set(name,new_value)
 
                 update(elem,elems,elems_html)
+
+                if(reloadParams.includes(name)){
+                    reloadAppWithNotification()
+                }
 
                 if(onChange) onChange(new_value)
             })
@@ -372,6 +397,10 @@ function bind(elems, elems_html){
                     update(elem,elems,elems_html)
 
                     Controller.toggle(enabled)
+
+                    if(reloadParams.includes(name)){
+                        reloadAppWithNotification()
+                    }
 
                     if(onChange) onChange(a.value)
                 }
@@ -705,11 +734,11 @@ trigger('card_interfice_cover', true)
 trigger('card_interfice_reactions', true)
 trigger('cache_images', false)
 trigger('interface_sound_play', false)
-
-
+trigger('disable_dmca', false)
+trigger('disable_trailers', false)
 
 /**
- * Добовляем поля
+ * Добавляем поля
  */
 select('jackett_url','','')
 select('jackett_key','','')

@@ -134,29 +134,28 @@ Arrays.extend(window.lampa_settings,{
     white_use: false,
 
     disable_features: {
-        dmca: false,
+        dmca: Storage.field('disable_dmca'),
         reactions: false,
         discuss: false,
         ai: false,
         subscribe: false,
         persons: false,
-        trailers: false,
+        trailers: Storage.field('disable_trailers'),
         install_proxy: false
     },
 
     lang_use: true,
-
     read_only: false,
-
     dcma: false,
-
     push_state: true,
-
     iptv: false,
-
     feed: true
 })
 
+if(window.lampa_settings.disable_features.dmca){
+    window.lampa_settings.dcma = false
+    delete window.lampa_settings.dcma
+}
 
 if(window.localStorage.getItem('remove_white_and_demo')){
     window.lampa_settings.demo         = false

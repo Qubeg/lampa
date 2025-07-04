@@ -357,7 +357,15 @@ function full(params, oncomplite, onerror){
 
     if(Utils.dcma(params.method, params.id)) return onerror()
 
-    get('3/'+params.method+'/'+params.id+'?api_key='+TMDBApi.key()+'&append_to_response=content_ratings,release_dates,keywords,alternative_titles&language='+Storage.field('tmdb_lang'),params,(json)=>{
+    let isDmcaDisabled = window.lampa_settings.disable_features && window.lampa_settings.disable_features.dmca
+    let apiCall = isDmcaDisabled ? 
+        (method, params, success, error) => {
+            let tmdbUrl = 'https://api.themoviedb.org/' + method
+            network.silent(tmdbUrl, success, error)
+        } : 
+        get
+
+    apiCall('3/'+params.method+'/'+params.id+'?api_key='+TMDBApi.key()+'&append_to_response=content_ratings,release_dates,keywords,alternative_titles&language='+Storage.field('tmdb_lang'),params,(json)=>{
         if(json.status_code) return status.stop(),onerror()
 
         json.source = 'tmdb'

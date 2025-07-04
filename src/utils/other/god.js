@@ -38,6 +38,8 @@ function init(){
             })
 
             window.god_enabled = true
+
+            $('.god-mode-setting').removeClass('hide').show()
         }
     })
 

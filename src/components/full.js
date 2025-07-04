@@ -60,7 +60,8 @@ function component(object){
         html.append(scroll.render())
 
         Api.full(object,(data)=>{
-            if(data.movie && data.movie.blocked){
+            if(data.movie && data.movie.blocked &&
+                !(window.lampa_settings.disable_features && window.lampa_settings.disable_features.dmca)){
                 this.empty({blocked: true})
             }
             else if(data.movie){

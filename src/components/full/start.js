@@ -57,6 +57,8 @@ function create(data, params = {}){
         }).join(', ')
 
         let countries = Api.sources.tmdb.parseCountries(data.movie)
+
+        if(!Array.isArray(countries)) countries = []
         let seasons   = Utils.countSeasons(data.movie)
         let tmdb_rating = parseFloat((data.movie.vote_average || 0) +'').toFixed(1)
 
