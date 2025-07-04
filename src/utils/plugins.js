@@ -197,8 +197,6 @@ function load(call){
     },(u)=>{
         console.log('Plugins','include:', original[u])
 
-        console.log('Extensions','include:', original[u])
-
         _created.push(original[u])
 
         updatePluginDB(original[u], u)
@@ -208,6 +206,22 @@ function load(call){
 function task(call){
     modify()
     _loaded = Storage.get('plugins','[]')
+
+    Account.plugins((plugins)=>{
+        let puts = window.lampa_settings.plugins_use ? plugins.filter(plugin=>plugin.status).map(plugin=>plugin.url).concat(Storage.get('plugins','[]').filter(plugin=>plugin.status).map(plugin=>plugin.url)) : []
+
+        puts.push('./plugins/modification.js')
+
+        puts = puts.filter((element, index) => {
+            return puts.indexOf(element) === index
+        })
+        
+        console.log('Plugins','load list:', puts)
+
+        _awaits = puts
+
+        call()
+    })
 }
 
 function awaits(){
