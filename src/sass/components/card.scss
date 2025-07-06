@@ -213,6 +213,26 @@
         text-transform: uppercase;
     }
 
+    &__source{
+        position: absolute;
+        left: -0.8em;
+        top: 1.4em;
+        padding: 0.4em 0.4em;
+        background: #57F570;
+        color: #17491C;
+        font-size: 0.8em;
+        border-radius: 0.3em;
+        max-width: 8em;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        z-index: 2;
+
+        &--with-type{
+            top: 3.4em;
+        }
+    }
+
     &__vote{
         position: absolute;
         right: 0.3em;

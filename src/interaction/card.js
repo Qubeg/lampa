@@ -79,6 +79,21 @@ function Card(data, params = {}){
                 this.card.querySelector('.card__view').appendChild(type_elem)
                 this.card.classList.add(data.original_name ? 'card--tv' : 'card--movie')
             }
+
+            // Отображение источника для агрегированных результатов
+            if(data.source_name && data.source_name !== 'unknown'){
+                let source_elem = document.createElement('div')
+                    source_elem.classList.add('card__source')
+                    source_elem.innerText = data.source_name
+                    source_elem.title = `Источник: ${data.source_name}`
+
+                // Если есть тип карточки, размещаем источник под ним
+                if(data.original_name){
+                    source_elem.classList.add('card__source--with-type')
+                }
+
+                this.card.querySelector('.card__view').appendChild(source_elem)
+            }
             
             
             if(params.card_small){
