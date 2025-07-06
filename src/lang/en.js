@@ -1183,4 +1183,14 @@ export default {
     install_extension_rule_5: '- Install only plugins from trusted sources. If you have any doubts about the security or legality of a plugin, it is better to refrain from installing it.',
     install_extension_rule_6: 'LAMPA does not support or endorse plugins related to pirated content.',
     install_extension_rule_7: 'By proceeding, you confirm that you understand these risks.',
+<<<<<<< HEAD
+=======
+    terminal_title: 'Terminal',
+    terminal_no_access: 'No access',
+    terminal_confirm: 'Allow',
+    terminal_deny: 'Deny',
+    terminal_update: 'Update',
+    terminal_code: 'Access code',
+    terminal_text: 'You are requesting access to the terminal. Developers may gain access to your device and control it. This can be useful for diagnostics and troubleshooting, but may also pose a security risk. Please make sure you trust the developers before granting access. <br><br>You can disable this feature at any time by clicking the "Deny" button.'
+>>>>>>> main
 }
