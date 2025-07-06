@@ -1158,8 +1158,6 @@ export default {
     install_extension_rule_5: '- Instale apenas plug-ins de fontes confiáveis. Se você tiver dúvidas sobre a segurança ou legalidade de um plug-in, é melhor não instalá-lo.',
     install_extension_rule_6: 'O LAMPA não apoia nem aprova plug-ins relacionados a conteúdo pirata.',
     install_extension_rule_7: 'Ao continuar, você confirma que compreende esses riscos.',
-<<<<<<< HEAD
-=======
 	terminal_title: 'Terminal',
     terminal_no_access: 'Sem acesso',
     terminal_confirm: 'Permitir',
@@ -1167,5 +1165,4 @@ export default {
     terminal_update: 'Atualizar',
     terminal_code: 'Código de acesso',
     terminal_text: 'Você está solicitando acesso ao terminal. Os desenvolvedores podem acessar e controlar seu dispositivo. Isso pode ser útil para diagnóstico e solução de problemas, mas também pode representar um risco de segurança. Certifique-se de confiar nos desenvolvedores antes de conceder acesso. <br><br>Você pode desativar este recurso a qualquer momento clicando no botão "Negar".'
->>>>>>> main
 }

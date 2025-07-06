@@ -1123,8 +1123,6 @@ export default {
     install_extension_rule_5: '- 仅安装来自可信来源的插件。如果您对插件的安全性或合法性存有疑虑，建议不要安装。',
     install_extension_rule_6: 'LAMPA 不支持或认可与盗版内容相关的插件。',
     install_extension_rule_7: '继续操作即表示您确认理解这些风险。',
-<<<<<<< HEAD
-=======
     terminal_title: '终端',
     terminal_no_access: '无访问权限',
     terminal_confirm: '允许',
@@ -1132,5 +1130,4 @@ export default {
     terminal_update: '更新',
     terminal_code: '访问码',
     terminal_text: '您正在请求访问终端。开发者可能会访问您的设备并进行控制。这对于诊断和排除问题很有用，但也可能带来安全风险。请确保您信任开发者后再授权访问。<br><br>您可以随时点击“拒绝”按钮关闭此功能。'
->>>>>>> main
 }
