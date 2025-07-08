@@ -283,11 +283,13 @@ function checkEmptyUrl(url){
 }
 
 function rewriteIfHTTPS(u){
+    if(Storage.field('protocol') == 'http') return u
+    
     return window.location.protocol == 'https:' ? u.replace(/^(http:\/\/|https:\/\/)/, 'https://') : u
 }
 
 function fixProtocolLink(u){
-    return rewriteIfHTTPS((localStorage.getItem('protocol') || 'https') + '://' + u.replace(/^(http:\/\/|https:\/\/)/, ''))
+    return rewriteIfHTTPS((Storage.field('protocol') || 'https') + '://' + u.replace(/^(http:\/\/|https:\/\/)/, ''))
 }
 
 function fixMirrorLink(u){
@@ -314,9 +316,8 @@ function shortText(fullStr, strLen, separator){
 }
 
 function protocol(){
-    return window.location.protocol == 'https:' ? 'https://' : (localStorage.getItem('protocol') || 'https') + '://'
+    return window.location.protocol == 'https:' ? 'https://' : (Storage.field('protocol') || 'https') + '://'
 }
-
 
 function addUrlComponent (url, params){
     return url + (/\?/.test(url) ? '&' : '?') + params;
