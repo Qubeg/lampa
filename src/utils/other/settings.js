@@ -8,11 +8,6 @@ import LangChoice from '../../interaction/lang'
 
 function init(){
     Settings.listener.follow('open', function (e){
-        if(e.name == 'more' && window.location.protocol == 'https:'){
-            $('[data-name="protocol"]',e.body).remove()
-        }
-
-       
         if(e.name == 'interface' && window.lampa_settings.lang_use){
             $('.settings-param:eq(0)',e.body).on('hover:enter',()=>{
                 LangChoice.open((code)=>{
