@@ -95,23 +95,15 @@ class Aerial{
     }
 
     fadeVideoIn(time) {
-        if (time > 0) {
-            this.transition_timeout = setTimeout(this.fadeVideoIn.bind(this), 16, time - 16)
-        }
-
-        this.opacity = 1 - (time / this.transition_time)
-
-        this.overlay[0].style.opacity = this.opacity
+        clearTimeout(this.transition_timeout)
+        if (time > 0) this.transition_timeout = setTimeout(this.fadeVideoIn.bind(this), 16, time - 16)
+        this.overlay?.[0] && (this.overlay[0].style.opacity = 1 - (time / this.transition_time))
     }
 
     fadeVideoOut(time) {
-        if (time > 0) {
-            this.transition_timeout = setTimeout(this.fadeVideoOut.bind(this), 16, time - 16)
-        }
-
-        this.opacity = time / this.transition_time
-
-        this.overlay[0].style.opacity = this.opacity
+        clearTimeout(this.transition_timeout)
+        if (time > 0) this.transition_timeout = setTimeout(this.fadeVideoOut.bind(this), 16, time - 16)
+        this.overlay?.[0] && (this.overlay[0].style.opacity = time / this.transition_time)
     }
 
     play(){
@@ -163,11 +155,16 @@ class Aerial{
     }
 
     destroy(){
-        this.html.remove()
-
-        this.net.clear()
-
+        if(this.video) {
+            this.video.pause();
+            this.video.src = ''
+        }
+        
         clearTimeout(this.transition_timeout)
+        this.time?.timer && clearInterval(this.time.timer)
+        
+        this.html.remove()
+        this.net.clear()
     }
 }
 

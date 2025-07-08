@@ -10,6 +10,7 @@ class Chrome{
     }
 
     destroy(){
+        this.html?.find('iframe').attr('src', 'about:blank')
         this.html.remove()
     }
 }

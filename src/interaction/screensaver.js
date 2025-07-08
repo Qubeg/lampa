@@ -51,11 +51,12 @@ class Screensaver{
             if(this.worked) e.event.preventDefault()
         })
 
-        $(window).on('mousedown',(e)=>{
+        $(window).on('mousedown touchstart', (e) => {
             this.resetTimer()
+            if(this.worked) { this.stopSlideshow(); e.preventDefault() }
         })
 
-        $(window).on('focus',this.resetTimer.bind(this))
+        $(window).on('focus visibilitychange', this.resetTimer.bind(this))
     }
 
     toggle(enabled){
@@ -107,15 +108,14 @@ class Screensaver{
 
     resetTimer(){
         clearTimeout(this.timer)
-
         this.time_reset = Date.now()
 
-        if(!Storage.field('screensaver') || !this.enabled || this.worked) return
+        if(this.worked) return this.stopSlideshow()
+        if(!Storage.field('screensaver') || !this.enabled) return
 
-        let timeout = 1000 * 60 * Storage.field('screensaver_time')
+        let timeout = Math.max(1000 * 60 * Storage.field('screensaver_time'), 60000)
 
-        this.timer = setTimeout(()=>{
-            //для ведра, когда в лампе появляетя фокус срабатывает таймер
+        this.timer = setTimeout(() => {
             if(Date.now() - this.time_reset <= timeout + 100) this.show()
             else this.resetTimer()
         }, timeout)
@@ -124,17 +124,13 @@ class Screensaver{
     stopSlideshow(){
         this.worked = false
         
-        this.html.fadeOut(300,()=>{
+        this.html.fadeOut(300, () => {
             this.html.removeClass('visible')
-
-            if(this.screensaver){
-                this.screensaver.destroy()
-                this.screensaver = false
-            }
+            try { this.screensaver?.destroy() } catch(e) {}
+            this.screensaver = null
         })
     
         this.resetTimer()
-
         this.listener.send('stop',{})
     }
 }

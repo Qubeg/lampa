@@ -124,9 +124,10 @@ class Cub{
     }
 
     destroy(){
+        this.html?.find('video').each(function(){ this.pause(); this.src = '' })
+        this.time?.timer && clearInterval(this.time.timer)
+        
         this.html.remove()
-
-        this.video = ()=>{}
 
         if(this.create_url_blob) URL.revokeObjectURL(this.create_url_blob)
     }
