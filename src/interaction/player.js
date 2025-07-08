@@ -420,6 +420,8 @@ function init(){
  * Главный контроллер
  */
 function toggle(){
+    if(work && work.timeline && work.timeline.waiting_for_user) return
+
     Controller.add('player',{
         invisible: true,
         toggle: ()=>{
@@ -613,6 +615,17 @@ function preload(data, call){
 }
 
 /**
+ * Активировать интерфейс плеера (панель и контроллер)
+ * только если диалог не активен
+ */
+function activatePlayerInterface(){
+    if(!work.timeline || !work.timeline.waiting_for_user){
+        Panel.show(true)
+        toggle()
+    }
+}
+
+/**
  * Спросить продолжать ли просмотр
  */
 function ask(){
@@ -636,10 +649,11 @@ function ask(){
                 onBack: ()=>{
                     work.timeline.continued = true
                     work.timeline.continued_bloc = true
-
-                    toggle()
+                    work.timeline.waiting_for_user = false
 
                     clearTimeout(timer_ask)
+                    
+                    activatePlayerInterface()
                 },
                 onSelect: (a)=>{
                     work.timeline.waiting_for_user = false
@@ -649,9 +663,9 @@ function ask(){
                         work.timeline.continued_bloc = true
                     } 
 
-                    toggle()
-
                     clearTimeout(timer_ask)
+                    
+                    activatePlayerInterface()
                 }
             })
 
@@ -660,10 +674,11 @@ function ask(){
             timer_ask = setTimeout(()=>{
                 work.timeline.continued = true
                 work.timeline.continued_bloc = true
+                work.timeline.waiting_for_user = false
 
                 Select.hide()
                 
-                toggle()
+                activatePlayerInterface()
             },8000)
         }
     }
@@ -900,11 +915,9 @@ function play(data){
                 
                 if(!preloader.call) $('body').append(html)
 
-                toggle()
-
-                Panel.show(true)
-
                 ask()
+
+                activatePlayerInterface()
 
                 saveTimeLoop()
 
@@ -938,9 +951,7 @@ function iptv(data){
 
             $('body').append(html)
 
-            toggle()
-
-            Panel.show(true)
+            activatePlayerInterface()
 
             listener.send('ready',data)
         }
