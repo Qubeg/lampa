@@ -961,9 +961,21 @@ function backup(){
                         if(data.data){
                             let imp  = 0
                             let ers  = 0
+                            
+                            // Сохраняем текущий действующий токен аккаунта
+                            let currentAccount = Storage.get('account','{}')
+                            let currentAccountToken = null
+                            if(currentAccount && currentAccount.token){
+                                currentAccountToken = currentAccount
+                            }
 
                             for(let i in data.data){
                                 try{
+                                    // Не перезаписываем токен аккаунта если он уже существует
+                                    if(i === 'account' && currentAccountToken){
+                                        continue
+                                    }
+                                    
                                     localStorage.setItem(i, data.data[i])
 
                                     imp++
