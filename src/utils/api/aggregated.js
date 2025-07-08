@@ -43,6 +43,28 @@ const aggregated_source = {
         }
 
         const status = new Status(sources.length)
+        let responses_count = 0
+        const min_responses = Math.min(2, sources.length)
+        
+        // Функция для обработки промежуточных результатов
+        const processIntermediateResults = (responses) => {
+            if (responses_count >= min_responses) {
+                const all_results = this._extractResults(responses, sources)
+                callback(this._processResults(all_results))
+            }
+        }
+        
+        // Переопределяем append для промежуточных обновлений
+        const originalAppend = status.append.bind(status)
+        status.append = (key, data) => {
+            originalAppend(key, data)
+            responses_count++
+            // Отправляем промежуточные результаты после минимального количества ответов
+            if (responses_count >= min_responses && responses_count < sources.length) {
+                processIntermediateResults(status.data)
+            }
+        }
+        
         status.onComplite = (responses) => {
             const all_results = this._extractResults(responses, sources)
             callback(this._processResults(all_results))
