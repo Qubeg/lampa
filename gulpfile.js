@@ -325,7 +325,7 @@ function enable_debug_mode(done){
  * @param {string} relativeSourcePath 
  * @param {string} sourcemapPath 
  * @returns {string} a new path to source
- */
+ */ 
 function pluginSourcemapPathTransform(relativeSourcePath, sourcemapPath) {
     const plgFolderLen = plgFolder.length-2;
     const newPath = relativeSourcePath.substring(plgFolderLen);
@@ -387,9 +387,9 @@ function buildDoc(done){
     done()
 }
 
-exports.pack_webos   = series(sync_webos, uglify_task, public_webos, index_webos);
-exports.pack_tizen   = series(sync_tizen, uglify_task, public_tizen, index_tizen);
-exports.pack_github  = series(sync_github, uglify_task, public_github, write_manifest, index_github);
+exports.pack_webos   = series(merge, sync_webos, uglify_task, public_webos, index_webos);
+exports.pack_tizen   = series(merge, sync_tizen, uglify_task, public_tizen, index_tizen);
+exports.pack_github  = series(merge, sync_github, uglify_task, public_github, write_manifest, index_github);
 exports.pack_plugins = series(plugins);
 exports.test         = series(test);
 exports.default = parallel(watch, browser_sync);

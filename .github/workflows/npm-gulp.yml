@@ -1,0 +1,73 @@
+## без отдельной ветки
+name: Build and Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ "develop" ]
+
+# Добавляем права для работы с репозиторием и GitHub Pages
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+# Разрешаем только один деплой одновременно
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout develop branch
+      uses: actions/checkout@v4
+      with:
+        ref: develop
+        # Получаем полную историю для корректной работы с ветками
+        fetch-depth: 0
+        # Используем токен с правами на запись
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Build project
+      run: npx gulp pack_github
+
+    - name: Verify build output
+      run: |
+        echo "Checking build output..."
+        if [ ! -d "build/github/lampa" ]; then
+          echo "❌ Error: build/github/lampa directory does not exist"
+          echo "Contents of build directory:"
+          ls -la build/ 2>/dev/null || echo "build directory does not exist"
+          exit 1
+        fi
+        
+        if [ -z "$(ls -A build/github/lampa/)" ]; then
+          echo "❌ Error: build/github/lampa directory is empty"
+          exit 1
+        fi
+        
+        echo "✅ Build successful! Contents of build/github/lampa/:"
+        ls -la build/github/lampa/
+        echo "Total files: $(find build/github/lampa -type f | wc -l)"
+
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+      
+    - name: Upload artifact for Pages
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: 'build/github/lampa'
+        
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
