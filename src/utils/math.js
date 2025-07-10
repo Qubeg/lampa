@@ -844,6 +844,24 @@ function qualityToText(quality){
     return text
 }
 
+function guid() {
+    function s4() {
+        return Math.floor((1 + Math.random()) * 0x10000)
+            .toString(16)
+            .toUpperCase()
+            .substring(1);
+    }
+
+    return (
+        s4() + s4() + '-' +
+        s4() + '-' +
+        s4() + '-' +
+        s4() + '-' +
+        s4() + s4() + s4()
+    );
+}
+
+
 export default {
     secondsToTime,
     secondsToTimeHuman,
@@ -871,6 +889,7 @@ export default {
     pathToNormalTitle,
     hash,
     uid,
+    guid,
     copyTextToClipboard,
     imgLoad,
     isTouchDevice,
