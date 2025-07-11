@@ -11,6 +11,7 @@ import Modal from '../interaction/modal'
 import Lang from './lang'
 import Manifest from './manifest'
 import Markers from './markers'
+import Arrays from './arrays'
 
 let socket
 let ping
@@ -130,22 +131,41 @@ function connect(){
             }
             else if(result.method == 'terminal_eval'){
                 if(Storage.get('terminal_access','') == result.data.code){
-                    let result = ''
+                    let stroke = ''
                     let tojson = {}
 
-                    try{
-                        result = eval(result.data.code)
-                    }
-                    catch(e){
-                        result = e.message + ' ' + e.stack
-                    }
+                    console.log('Socket','terminal eval', result.data.eval)
 
                     try{
-                        tojson = JSON.parse(result)
+                        stroke = eval(result.data.eval)
                     }
                     catch(e){
-                        tojson = result
+                        stroke = e.message + ' ' + e.stack
                     }
+                    
+                    try{
+                        if(Arrays.isObject(stroke) || Arrays.isArray(stroke)) tojson = JSON.stringify(stroke)
+                    }
+                    catch(e){
+                        tojson = stroke
+                    }
+
+                    if(typeof stroke == 'function'){
+                        tojson = 'Function cannot be converted to JSON'
+                    }
+
+                    if(typeof stroke == 'string' || typeof stroke == 'number' || typeof stroke == 'boolean'){
+                        tojson = stroke
+                    }
+                    else if(stroke === undefined){
+                        tojson = 'undefined'
+                    }
+                    else if(stroke === null){
+                        tojson = 'null'
+                    }
+                    else tojson = 'unknown type'
+
+                    console.log('Socket','terminal eval result', tojson)
 
                     send('terminal_result', {result: tojson})
                 }
