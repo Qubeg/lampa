@@ -537,8 +537,8 @@ function loadTask(){
                 next()
             }
         }
-        Account.task(finish)
         Plugins.task(finish)
+        Account.task(finish)
     })
 
     Task.secondary(()=>{
@@ -546,7 +546,7 @@ function loadTask(){
     })
 
     Task.secondary(()=>{
-        startApp()
+        setTimeout(startApp, 400)
     })
 
     Task.secondary(()=>{
