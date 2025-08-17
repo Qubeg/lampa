@@ -478,10 +478,10 @@ function startApp(){
 
         Screensaver.enable()
 
-        $('.welcome').fadeOut(500,()=>{
+        $('.welcome').fadeOut(300,()=>{
             $(this).remove()
         })
-    },1000)
+    },300)
 
     //инициализируем остальные классы
 
@@ -523,19 +523,22 @@ function loadTask(){
     Task.queue((next)=>{
         LoadingProgress.step(3)
 
-        Plugins.task(next)
-    })
-
-    Task.queue((next)=>{
-        LoadingProgress.step(4)
-
         VPN.task(next)
     })
 
     Task.queue((next)=>{
-        LoadingProgress.step(5)
-
-        Account.task(next)
+        LoadingProgress.step(4)
+        
+        let completed = 0
+        let finish = () => {
+            completed++
+            if(completed === 2) {
+                LoadingProgress.step(5)
+                next()
+            }
+        }
+        Account.task(finish)
+        Plugins.task(finish)
     })
 
     Task.secondary(()=>{
@@ -543,7 +546,7 @@ function loadTask(){
     })
 
     Task.secondary(()=>{
-        setTimeout(startApp, 5000)
+        startApp()
     })
 
     Task.secondary(()=>{
@@ -568,7 +571,7 @@ function loadLang(){
         $.ajax({
             url: (location.protocol == 'file:' || Platform.desktop() ? Manifest.github_lampa : './') + 'lang/' + code + '.js',
             dataType: 'text',
-            timeout: 10000,
+            timeout: 3000,
             success: (data)=>{
                 try{
                     let translate = {}

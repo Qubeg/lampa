@@ -7,6 +7,7 @@ import Markers from './markers'
 
 let network   = new Request()
 let connected = true
+let lastWorkingMirror = null
 
 function init(){
     setInterval(()=>{
@@ -47,6 +48,12 @@ function find(protocol, callback){
         check(protocol, mirror, (result)=>{
             if(result){
                 console.log('Mirrors', protocol + mirror, 'is online')
+                
+                // Сохраняем первое найденное рабочее зеркало
+                if(!lastWorkingMirror) {
+                    lastWorkingMirror = mirror
+                    Storage.set('last_working_mirror', mirror, true)
+                }
 
                 status.append(mirror, result)
             }
@@ -71,13 +78,12 @@ function check(protocol, mirror, call){
         data: random,
     }, {
         dataType: 'text',
-        timeout: 1000 * 7
+        timeout: 1000 * 4
     })
 }
 
 function task(call){
     let protocols = ['https://', 'http://']
-
     let status = new Status(protocols.length)
 
     connected = true
@@ -104,20 +110,51 @@ function task(call){
         if(call) call()
     }
 
-    check(Utils.protocol(), Manifest.cub_domain, (result)=>{
-        console.log('Mirrors', 'first check:', Manifest.cub_domain, 'status:', result)
+    let checkTargets = []
+    
+    if(lastWorkingMirror) {
+        checkTargets.push(lastWorkingMirror)
+    }
+    
+    if(lastWorkingMirror !== Manifest.cub_domain) {
+        checkTargets.push(Manifest.cub_domain)
+    }
 
-        if(result){
-            if(call) call()
-        }
-        else{
+    let checkIndex = 0
+    
+    let tryNextTarget = () => {
+        if(checkIndex >= checkTargets.length) {
             protocols.forEach((protocol)=>{
                 find(protocol, (mirrors)=>{
                     status.append(protocol, mirrors)
                 })
             })
+            return
         }
-    })
+
+        let target = checkTargets[checkIndex]
+        checkIndex++
+
+        check(Utils.protocol(), target, (result)=>{
+            console.log('Mirrors', 'quick check:', target, 'status:', result)
+
+            if(result){
+                lastWorkingMirror = target
+                Storage.set('last_working_mirror', target, true)
+                if(call) call()
+            }
+            else{
+                tryNextTarget()
+            }
+        })
+    }
+
+    // Загружаем кэш при первом запуске
+    if(lastWorkingMirror === null) {
+        lastWorkingMirror = Storage.get('last_working_mirror', Manifest.cub_domain)
+    }
+
+    tryNextTarget()
 }
 
 function test(call){

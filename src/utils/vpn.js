@@ -49,7 +49,7 @@ function region(call){
 let extract = (call, error)=>{
     network.silent(Utils.protocol() + 'geo.' + Manifest.cub_domain,call,error,false,{
         dataType: 'text',
-        timeout: 8000
+        timeout: 5000
     })
 }
 
