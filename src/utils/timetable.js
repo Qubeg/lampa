@@ -190,6 +190,44 @@ function get(elem, callback){
 }
 
 /**
+ * Получить полный список эпизодов для сериала, используя только сводные данные TMDB (episode_count по каждому сезону)
+ * Это быстро и не требует загружать каждый сезон отдельно.
+ * @param {{id:number}} elem
+ * @param {(episodes:Array) => void} callback
+ */
+function getAll(elem, callback){
+    if(!elem || typeof elem.id !== 'number'){
+        if(typeof callback === 'function') callback([])
+        return
+    }
+
+    TMDB.get('tv/'+elem.id,{},(tv)=>{
+        const episodes = []
+        if(tv?.seasons) {
+            tv.seasons
+                .filter(season => season.season_number > 0)
+                .forEach(season => {
+                    for(let i = 1; i <= (season.episode_count || 0); i++) {
+                        episodes.push({
+                            season_number: season.season_number,
+                            episode_number: i
+                        })
+                    }
+                })
+        }
+
+        // Сортируем по стандартной функции без циклической зависимости
+        episodes.sort((a,b) => {
+            const ka = (a.season_number||0) * 1000 + (a.episode_number||0)
+            const kb = (b.season_number||0) * 1000 + (b.episode_number||0)
+            return ka - kb
+        })
+        
+        callback?.(episodes)
+    }, () => callback?.([]))
+}
+
+/**
  * Добавить карточку в парсинг самостоятельно
  * @param {{id:integer,number_of_seasons:integer}} elem - карточка
  */
@@ -277,6 +315,47 @@ function lately(){
 export default {
     init,
     get,
+    getAll,
+
+    /**
+     * Получить сводку по сериалу (seasons, episode_count и т.п.)
+     * Быстро: один запрос tv/{id}
+     * @param {{id:number}} elem
+     * @param {(tv:object)=>void} callback
+     */
+    getShowMeta(elem, callback){
+        if(!elem || typeof elem.id !== 'number'){ callback?.(null); return }
+        TMDB.get('tv/'+elem.id,{},(tv)=>callback?.(tv),()=>callback?.(null))
+    },
+
+    /**
+     * Получить эпизоды конкретного сезона с минимальной пост-обработкой
+     * Пытается взять из локального кеша timetable, если совпадает сезон
+     * @param {{id:number}} elem
+     * @param {number} season
+     * @param {(episodes:Array)=>void} callback
+     */
+    getSeasonEpisodes(elem, season, callback){
+        if(!elem || typeof elem.id !== 'number' || !season){ callback?.([]); return }
+
+        // Сначала пробуем из кеша timetable
+        Cache.getData('timetable', elem.id).then(obj=>{
+            if(obj && obj.season === season && Array.isArray(obj.episodes) && obj.episodes.length){
+                callback?.(obj.episodes)
+            }
+            else{
+                TMDB.get('tv/'+elem.id+'/season/'+season,{},(ep)=>{
+                    const eps = ep?.episodes ? filter(ep.episodes) : []
+                    callback?.(eps)
+                },()=>callback?.([]))
+            }
+        }).catch(()=>{
+            TMDB.get('tv/'+elem.id+'/season/'+season,{},(ep)=>{
+                const eps = ep?.episodes ? filter(ep.episodes) : []
+                callback?.(eps)
+            },()=>callback?.([]))
+        })
+    },
     add,
     all,
     update,

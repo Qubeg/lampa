@@ -145,5 +145,41 @@ export default {
     details,
     format,
     watched,
-    filename
+    filename,
+
+    /**
+     * Ключ эпизода для сортировки и поиска
+     */
+    episodeKey: (ep) => (ep.season_number || 0) * 1000 + (ep.episode_number || 0),
+
+    /**
+     * Получить все просмотренные эпизоды для конкретного сериала
+     * @param {Array<{season_number:number,episode_number:number}>} episodes список эпизодов (можно неполный)
+     * @param {string} original_title оригинальное название сериала (используется в hash)
+     * @returns {Array<{ep:object, view:{hash:string,percent:number,time:number,duration:number,profile:number}}>} отсортированный список по сезону/эпизоду
+     */
+    getViewedEpisodesForSeries(episodes, original_title){
+        if(!Array.isArray(episodes) || !original_title) return []
+
+        const viewed = episodes
+            .filter(ep => typeof ep.season_number === 'number' && typeof ep.episode_number === 'number')
+            .map(ep => {
+                const hash = Lampa.Utils.hash([ep.season_number, ep.season_number > 10 ? ':' : '', ep.episode_number, original_title].join(''))
+                const v = view(hash)
+                return v.percent > 0 ? { ep, view: v } : null
+            })
+            .filter(Boolean)
+            .sort((a,b) => this.episodeKey(a.ep) - this.episodeKey(b.ep))
+
+        return viewed
+    },
+
+    /**
+     * Отсортировать массив эпизодов по сезону и номеру эпизода по возрастанию
+     * @param {Array<{season_number:number,episode_number:number}>} episodes 
+     */
+    sortEpisodes(episodes){
+        if(!Array.isArray(episodes)) return []
+        return episodes.slice().sort((a,b) => this.episodeKey(a) - this.episodeKey(b))
+    }
 }

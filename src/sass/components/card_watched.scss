@@ -52,6 +52,20 @@
             margin-top: 0.5em;
         }
     }
+
+    &__missed{
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+        padding-bottom: 0.5em;
+        margin-bottom: 0.5em;
+        color: #eeaf1ba1 !important;
+    }
+
+    &__final{
+        > span{
+            white-space: normal !important;
+            line-height: 1.3;
+        }
+    }
 }
 
 .card.focus .card-watched{

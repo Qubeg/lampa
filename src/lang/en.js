@@ -49,6 +49,8 @@ export default {
     full_episode_days_left: 'Days left',
     full_trailer_official: 'Official',
     full_trailer_no_official: 'Informal',
+    missed_episodes: 'Missed',
+    last_episode_now: 'This is the latest episode at the moment',
     full_season: 'Season',
     full_episode: 'Episode',
     full_directing: 'Directing',

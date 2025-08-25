@@ -241,95 +241,224 @@ function Card(data, params = {}){
      * Какие серии просмотрено
      */
     this.watched = function(){
-        if(!Storage.field('card_episodes')) return
+        if(!Storage.field('card_episodes') || this.watched_checked) return
 
-        if(!this.watched_checked){
-            function get(callback){
-                if(data.original_name) Timetable.get(data, callback)
-                else callback([])
+        const keyOf = Timeline.episodeKey
+        
+        const getCurrentData = () => {
+            if(!data.original_name) {
+                // Для фильмов
+                let time = Timeline.view(Utils.hash(data.original_title))
+                return time.percent ? {
+                    current: { name: Lang.translate('title_viewed') + ' ' + (time.time ? Utils.secondsToTimeHuman(time.time) : time.percent + '%') },
+                    view: time,
+                    primaryList: [],
+                    missedList: [],
+                    seasons: [],
+                    lastOfAll: false
+                } : null
             }
 
-            get(episodes=>{
-                let viewed
+            // Для сериалов: минимальные данные
+            return new Promise(resolve => {
+                Timetable.getShowMeta(data, tv => {
+                    const seasons = (tv?.seasons || [])
+                        .filter(s => (s.season_number||0) > 0)
+                        .map(s => ({ season_number: s.season_number, episode_count: s.episode_count || 0 }))
+                        .sort((a,b) => a.season_number - b.season_number)
 
-                episodes.forEach(ep=>{
-                    let hash = Utils.hash([ep.season_number, ep.season_number > 10 ? ':' : '',ep.episode_number,data.original_title].join(''))
-                    let view = Timeline.view(hash)
+                    const bySeason = (sn) => seasons.find(s => s.season_number === sn)
+                    const lastSeasonNum = seasons.length ? seasons[seasons.length-1].season_number : 1
 
-                    if(view.percent) viewed = {ep, view}
+                    const last = Storage.get('online_watched_last', '{}')
+                    const filed = last[Utils.hash(data.original_title)]
+
+                    // Попытка найти последний реально просмотренный эпизод без перечисления всех эпизодов
+                    const findLastViewed = () => {
+                        for(let i = seasons.length - 1; i >= 0; i--){
+                            const s = seasons[i]
+                            const count = s.episode_count || 0
+                            for(let e = count; e >= 1; e--){
+                                const h = Utils.hash([s.season_number, s.season_number > 10 ? ':' : '', e, data.original_title].join(''))
+                                const v = Timeline.view(h)
+                                if(v.percent > 0){
+                                    return { current: { season_number: s.season_number, episode_number: e }, view: v }
+                                }
+                            }
+                        }
+                        return null
+                    }
+
+                    let found = findLastViewed()
+                    if(!found && filed?.episode){
+                        const h = Utils.hash([filed.season, filed.season > 10 ? ':' : '', filed.episode, data.original_title].join(''))
+                        found = { current: { season_number: filed.season, episode_number: filed.episode }, view: Timeline.view(h) }
+                    }
+
+                    if(!found){
+                        // Ничего не просмотрено — ничего не отображаем
+                        resolve(null)
+                        return
+                    }
+
+                    let { current, view } = found
+                    let curSeason  = current.season_number
+                    let curEpisode = current.episode_number
+
+                    // Найти первый пропуск до текущего эпизода в этом сезоне и отдать максимум 3
+                    const missedList = []
+                    if(curEpisode > 1){
+                        let gapStart = null
+                        for(let e = 1; e < curEpisode; e++){
+                            const h = Utils.hash([curSeason, curSeason > 10 ? ':' : '', e, data.original_title].join(''))
+                            const v = Timeline.view(h)
+                            if(v.percent === 0){
+                                if(gapStart === null) gapStart = e
+                            } else if(gapStart !== null){
+                                break
+                            }
+                        }
+                        if(gapStart !== null){
+                            for(let e = gapStart; e < curEpisode && missedList.length < 3; e++){
+                                const h = Utils.hash([curSeason, curSeason > 10 ? ':' : '', e, data.original_title].join(''))
+                                if(Timeline.view(h).percent === 0) missedList.push({ season_number: curSeason, episode_number: e })
+                                else break
+                            }
+                        }
+                    }
+
+                    // Список для отображения: текущий + 2 следующих (переход через сезон, если надо)
+                    const primaryList = [{ season_number: curSeason, episode_number: curEpisode }]
+                    let s = curSeason
+                    let e = curEpisode + 1
+                    while(primaryList.length < 3){
+                        const info = bySeason(s)
+                        const count = info ? (info.episode_count || 0) : 0
+                        if(e <= count && e > 0){
+                            primaryList.push({ season_number: s, episode_number: e })
+                            e++
+                        } else {
+                            const nextSeason = seasons.find(x => x.season_number > s)
+                            if(nextSeason){
+                                s = nextSeason.season_number
+                                e = 1
+                            } else {
+                                break
+                            }
+                        }
+                    }
+
+                    const lastInfo = bySeason(lastSeasonNum) || { episode_count: 0 }
+                    const lastOfAll = curSeason === lastSeasonNum && curEpisode >= (lastInfo.episode_count || 0)
+
+                    resolve({ current, view, primaryList, missedList, seasons, lastOfAll })
                 })
+            })
+        }
 
-                if(!viewed && data.original_name){
-                    let last  = Storage.get('online_watched_last', '{}')
-                    let filed = last[Utils.hash(data.original_title)]
+        const createItem = (text, classes = [], showTimeline = false, timeline = null) => {
+            const div = document.createElement('div')
+            div.classList.add('card-watched__item', ...classes)
+            
+            const span = document.createElement('span')
+            span.innerText = text
+            div.appendChild(span)
+            
+            if(showTimeline && timeline) {
+                div.appendChild(Timeline.render(timeline)[0])
+            }
+            
+            return div
+        }
 
-                    if(filed && filed.episode){
-                        viewed = {
-                            ep: {
-                                episode_number: filed.episode,
-                                name: Lang.translate('full_episode') + ' ' + filed.episode,
-                            },
-                            view: Timeline.view(Utils.hash([filed.season, filed.season > 10 ? ':' : '',filed.episode,data.original_title].join('')))
-                        }
+        const renderWatched = (plan) => {
+            if(!plan) return
+
+            if(data.original_name) {
+                const { current, view, primaryList, missedList, lastOfAll } = plan
+
+                // Сезоны, которые нужно загрузить для названий (только те, что используем)
+                const seasonsToLoad = [...new Set([...
+                    primaryList.map(ep => ep.season_number),
+                    ...missedList.map(ep => ep.season_number)
+                ].filter(Boolean))]
+
+                this._seasonCache = this._seasonCache || {}
+                const needLoad = seasonsToLoad.filter(s => !this._seasonCache[s])
+
+                const renderWithNames = (episodeNames = new Map()) => {
+                    const wrap = Template.js('card_watched', {})
+                    const body = wrap.querySelector('.card-watched__body')
+
+                    if(missedList.length) {
+                        const missedLabel = missedList.map(m => `S${m.season_number||0}E${m.episode_number||0}`).join(', ')
+                        body.appendChild(createItem(Lang.translate('missed_episodes') + ': ' + missedLabel, ['card-watched__missed']))
                     }
-                }
 
-                if(!viewed && !data.original_name){
-                    let time = Timeline.view(Utils.hash([data.original_title].join('')))
-
-                    if(time.percent) {
-                        viewed = {
-                            ep: {
-                                name: Lang.translate('title_viewed') + ' ' + (time.time ? Utils.secondsToTimeHuman(time.time) : time.percent + '%'),
-                            },
-                            view: time
-                        }
-                    }
-                }
-
-                if(viewed){
-                    let soon = []
-                    let next = episodes.slice(episodes.indexOf(viewed.ep)).filter(ep=>ep.air_date).filter(ep=>{
-                        let date = Utils.parseToDate(ep.air_date).getTime()
-
-                        if(date > Date.now()) soon.push(ep)
-
-                        return date < Date.now()
-                    }).slice(0,5)
-
-                    if(next.length == 0) next = [viewed.ep]
-
-                    if(soon.length && next.length < 5 && !next.find(n=>n.episode_number == soon[0].episode_number)) next.push(soon[0])
-
-                    let wrap = Template.js('card_watched',{})
-
-                    next.forEach(ep=>{
-                        let div  = document.createElement('div')
-                        let span = document.createElement('span')
-                        let date = Utils.parseToDate(ep.air_date)
-                        let now  = Date.now()
-                        let days = Math.ceil((date.getTime() - now)/(24*60*60*1000))
-
-                        div.classList.add('card-watched__item')
-                        div.appendChild(span)
-
-                        span.innerText = (ep.episode_number ?  ep.episode_number + ' - ' : '') + (days > 0 ? Lang.translate('full_episode_days_left') + ': ' + days : (ep.name || Lang.translate('noname')))
-
-                        if(ep == viewed.ep) div.appendChild(Timeline.render(viewed.view)[0])
-
-                        wrap.querySelector('.card-watched__body').appendChild(div)
+                    primaryList.forEach((ep, i) => {
+                        const badge = `S${ep.season_number||0}E${ep.episode_number||0}`
+                        const episodeName = episodeNames.get(`${ep.season_number}x${ep.episode_number}`) || badge
+                        const isFirst = (ep.season_number === current.season_number && ep.episode_number === current.episode_number) && i === 0
+                        body.appendChild(createItem(badge + ' - ' + episodeName, [], isFirst, isFirst ? view : null))
                     })
 
+                    if(lastOfAll) {
+                        body.appendChild(createItem(Lang.translate('last_episode_now'), ['card-watched__final']))
+                    }
+
                     this.watched_wrap = wrap
-
-                    let view = this.card.querySelector('.card__view')
-
-                    view.insertBefore(wrap, view.firstChild)
+                    this.card.querySelector('.card__view').insertBefore(wrap, this.card.querySelector('.card__view').firstChild)
                 }
-            })
 
-            this.watched_checked = true
+                if(needLoad.length) {
+                    let loaded = 0
+                    needLoad.forEach(season => {
+                        TmdbApi.get(`tv/${data.id}/season/${season}`, {}, (result) => {
+                            this._seasonCache[season] = result?.episodes || []
+                            loaded++
+                            if(loaded === needLoad.length) {
+                                const nameMap = new Map()
+                                seasonsToLoad.forEach(s => {
+                                    (this._seasonCache[s] || []).forEach(ep => {
+                                        nameMap.set(`${s}x${ep.episode_number}`, ep.name)
+                                    })
+                                })
+                                renderWithNames(nameMap)
+                            }
+                        }, () => {
+                            this._seasonCache[season] = []
+                            loaded++
+                            if(loaded === needLoad.length) renderWithNames()
+                        })
+                    })
+                } else {
+                    const nameMap = new Map()
+                    seasonsToLoad.forEach(s => {
+                        (this._seasonCache[s] || []).forEach(ep => {
+                            nameMap.set(`${s}x${ep.episode_number}`, ep.name)
+                        })
+                    })
+                    renderWithNames(nameMap)
+                }
+            } else {
+                // Фильм
+                const wrap = Template.js('card_watched', {})
+                const body = wrap.querySelector('.card-watched__body')
+                body.appendChild(createItem(plan.current.name, [], true, plan.view))
+                this.watched_wrap = wrap
+                this.card.querySelector('.card__view').insertBefore(wrap, this.card.querySelector('.card__view').firstChild)
+            }
         }
+
+        const result = getCurrentData()
+        
+        if(result instanceof Promise) {
+            result.then(renderWatched)
+        } else {
+            renderWatched(result)
+        }
+
+        this.watched_checked = true
     }
 
     /**

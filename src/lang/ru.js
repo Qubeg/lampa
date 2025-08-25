@@ -49,6 +49,8 @@ export default {
     full_episode_days_left: 'Осталось дней',
     full_trailer_official: 'Официальный',
     full_trailer_no_official: 'Неофициальный',
+    missed_episodes: 'Пропущено',
+    last_episode_now: 'Это последняя серия на данный момент',
     full_season: 'Cезон',
     full_episode: 'Эпизод',
     full_directing: 'Режиссура',
