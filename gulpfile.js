@@ -289,6 +289,7 @@ function browser_sync(done) {
         server: {
             baseDir: bulFolder+'web/'
         },
+        listen: '127.0.0.1',
         open: false,
         notify: false,
         ghostMode: false,
