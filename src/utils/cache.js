@@ -9,8 +9,9 @@ let Cache = new DB('cache',[
     'other',
     'timetable',
     'cards',
-    'storage'
-],7)
+    'storage',
+    'tv_meta'
+],8)
 
 Cache.openDatabase().then(()=>{
     console.log('Cache', 'worked')

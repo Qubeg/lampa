@@ -4,13 +4,29 @@ import Timetable from '../utils/timetable'
 import TmdbApi from '../utils/api/tmdb'
 import Lang from '../utils/lang'
 import Utils from '../utils/math'
+import Cache from '../utils/cache'
 
 // Кэш эпизодов по сезонам, чтобы не дёргать API повторно
 /** @type {Map<string, Array>} */
 const seasonCache = new Map() // key: `${tvId}:${season}` -> episodes[]
+const MAX_CACHE_SIZE = 100 // Максимальный размер кэша
 
 /**
- * Очищает кэш сезонов (полезно для освобождения памяти)
+ * Добавляет данные в кэш с ограничением размера
+ * @param {string} key - Ключ кэша
+ * @param {Array} data - Данные для кэширования
+ */
+function addToSeasonCache(key, data) {
+    // Если кэш переполнен - удаляем самые старые записи
+    if (seasonCache.size >= MAX_CACHE_SIZE) {
+        const firstKey = seasonCache.keys().next().value
+        seasonCache.delete(firstKey)
+    }
+    seasonCache.set(key, data)
+}
+
+/**
+ * Очищает кэш сезонов
  * @param {number|string} [tvId] - ID сериала для частичной очистки, если не указан - очищает весь кэш
  */
 function clearCache(tvId = null) {
@@ -37,23 +53,79 @@ function buildCacheKey(tvId, season){
 }
 
 /**
- * Получает эпизоды сезона с кэшированием
+ * Получает метаданные сериала
+ * @param {Object} data - Данные сериала с id
+ * @returns {Promise<Object|null>} Метаданные сериала или null
+ */
+function getShowMetaFromCache(data) {
+    if (!data?.id) return Promise.resolve(null)
+    
+    // Сначала пробуем взять из кэша
+    return Cache.getData('tv_meta', data.id).then(cached => {
+        // Проверяем актуальность кэша (30 дней)
+        const cacheAge = cached?.cached_at ? Date.now() - cached.cached_at : Infinity
+        const maxAge = 30 * 24 * 60 * 60 * 1000 // 30 дней
+        
+        if (cached && cached.seasons && cacheAge < maxAge) {
+            return cached
+        }
+        
+        // Если нет в кэше или кэш устарел - запрашиваем из API и сохраняем
+        return new Promise(resolve => {
+            TmdbApi.get(`tv/${data.id}`, {}, (tvShowData) => {
+                if (tvShowData) {
+                    // Сохраняем в кэш только нужные данные
+                    const metaToCache = {
+                        id: tvShowData.id,
+                        seasons: tvShowData.seasons,
+                        cached_at: Date.now()
+                    }
+                    Cache.rewriteData('tv_meta', data.id, metaToCache).catch(() => {})
+                    resolve(tvShowData)
+                } else {
+                    resolve(null)
+                }
+            }, () => resolve(null))
+        })
+    }).catch(() => {
+        // Если ошибка чтения кэша - идем в API
+        return new Promise(resolve => {
+            TmdbApi.get(`tv/${data.id}`, {}, resolve, () => resolve(null))
+        })
+    })
+}
+
+/**
+ * Получаем эпизоды сезона
  * @param {number|string} tvId - ID сериала в TMDB
  * @param {number|string} season - Номер сезона
  * @returns {Promise<Array>} Массив эпизодов сезона
  */
-function fetchSeason(tvId, season){
+function fetchSeasonFromCache(tvId, season){
     const cacheKey = buildCacheKey(tvId, season)
-    if(seasonCache.has(cacheKey)) return Promise.resolve(seasonCache.get(cacheKey))
+    
+    // Проверяем кэш в памяти
+    if(seasonCache.has(cacheKey)) {
+        return Promise.resolve(seasonCache.get(cacheKey))
+    }
 
+    // Пробуем получить из IndexedDB через Timetable
     return new Promise((resolve) => {
-        TmdbApi.get(`tv/${tvId}/season/${season}`, {}, (result) => {
-            const episodes = (result?.episodes) || []
-            seasonCache.set(cacheKey, episodes)
-            resolve(episodes)
-        }, () => {
-            seasonCache.set(cacheKey, [])
-            resolve([])
+        Timetable.getSeasonEpisodes({id: parseInt(tvId)}, parseInt(season), (episodes) => {
+            if (episodes && episodes.length > 0) {
+                addToSeasonCache(cacheKey, episodes)
+                resolve(episodes)
+            } else {
+                // Если нет в IndexedDB - идем в API
+                TmdbApi.get(`tv/${tvId}/season/${season}`, {}, (result) => {
+                    const episodes = (result?.episodes) || []
+                    addToSeasonCache(cacheKey, episodes)
+                    resolve(episodes)
+                }, () => {
+                    addToSeasonCache(cacheKey, [])
+                    resolve([])
+                })
+            }
         })
     })
 }
@@ -68,15 +140,12 @@ function fetchSeason(tvId, season){
 function hashEpisode(original_title, season, episode){
     // Валидация входных данных
     if (!original_title || typeof original_title !== 'string') {
-        console.warn('Invalid original_title for hashEpisode:', original_title)
         return Utils.hash('unknown')
     }
     if (typeof season !== 'number' || season < 0) {
-        console.warn('Invalid season number for hashEpisode:', season)
         season = 0
     }
     if (typeof episode !== 'number' || episode < 0) {
-        console.warn('Invalid episode number for hashEpisode:', episode)
         episode = 0
     }
     
@@ -108,7 +177,7 @@ function getPlanMovie(data){
  */
 function getPlanTv(data){
     return new Promise(resolve => {
-        Timetable.getShowMeta(data, tvShowData => {
+        getShowMetaFromCache(data).then(tvShowData => {
             const seasons = (tvShowData?.seasons || [])
                 .filter(season => (season.season_number||0) > 0)
                 .map(season => ({ season_number: season.season_number, episode_count: season.episode_count || 0 }))
@@ -172,27 +241,13 @@ function getPlanTv(data){
 
             // Поиск пропущенных эпизодов: непрерывный блок перед текущим, максимум 3
             const missedList = []
-            const viewCache = new Map() // кэш для Timeline.view в рамках этого расчёта
             
-            /**
-             * Получает данные просмотра
-             * @param {number} season - Номер сезона
-             * @param {number} episode - Номер эпизода
-             * @returns {Object} Данные просмотра из Timeline
-             */
-            const getView = (season, episode) => {
-                const hash = hashEpisode(data.original_title, season, episode)
-                if(!viewCache.has(hash)) {
-                    viewCache.set(hash, Timeline.view(hash))
-                }
-                return viewCache.get(hash)
-            }
-
             // Ищем пропущенные эпизоды в текущем сезоне
             if(curEpisode > 1){
                 let gapStart = null
                 for(let episodeNum = 1; episodeNum < curEpisode; episodeNum++){
-                    const episodeView = getView(curSeason, episodeNum)
+                    const episodeHash = hashEpisode(data.original_title, curSeason, episodeNum)
+                    const episodeView = Timeline.view(episodeHash)
                     if(episodeView.percent === 0){
                         if(gapStart === null) gapStart = episodeNum
                     } else if(gapStart !== null){
@@ -201,7 +256,9 @@ function getPlanTv(data){
                 }
                 if(gapStart !== null){
                     for(let episodeNum = gapStart; episodeNum < curEpisode && missedList.length < 3; episodeNum++){
-                        if(getView(curSeason, episodeNum).percent === 0){
+                        const episodeHash = hashEpisode(data.original_title, curSeason, episodeNum)
+                        const episodeView = Timeline.view(episodeHash)
+                        if(episodeView.percent === 0){
                             missedList.push({ season_number: curSeason, episode_number: episodeNum })
                         } else break
                     }
@@ -297,11 +354,12 @@ function render(plan, opts = {}){
         body.appendChild(createItem(plan.current.name, [], options.withTimeline, plan.view))
     } else {
         const { current, view, primaryList, missedList, lastOfAll, tvId } = plan
+        const fragment = document.createDocumentFragment()
 
         // Показываем пропущенные эпизоды, если есть
         if(missedList?.length){
             const missedLabel = missedList.map(missedEpisode => `S${missedEpisode.season_number||0}E${missedEpisode.episode_number||0}`).join(', ')
-            body.appendChild(createItem(Lang.translate('missed_episodes') + ': ' + missedLabel, ['card-watched__missed']))
+            fragment.appendChild(createItem(Lang.translate('missed_episodes') + ': ' + missedLabel, ['card-watched__missed']))
         }
 
         const nodes = []
@@ -310,23 +368,40 @@ function render(plan, opts = {}){
             const isFirst = (episodeItem.season_number === (current?.season_number) && episodeItem.episode_number === (current?.episode_number)) && episodeIndex === 0
             const node = createItem(badge, [], options.withTimeline && isFirst, isFirst ? view : null)
             nodes.push({ key: `${episodeItem.season_number}x${episodeItem.episode_number}`, node, badge })
-            body.appendChild(node)
+            fragment.appendChild(node)
         })
 
         // Показываем, если это последний эпизод
         if(lastOfAll){
-            body.appendChild(createItem(Lang.translate('last_episode_now'), ['card-watched__final']))
+            fragment.appendChild(createItem(Lang.translate('last_episode_now'), ['card-watched__final']))
         }
+
+        // Добавляем весь фрагмент за один раз
+        body.appendChild(fragment)
 
         if(options.fetchNames && tvId){
             // Собираем уникальные сезоны
+            const seasonsToLoad = []
             const seasonsSet = new Set()
-            primaryList.forEach(episodeData => episodeData.season_number && seasonsSet.add(episodeData.season_number))
-            missedList?.forEach(episodeData => episodeData.season_number && seasonsSet.add(episodeData.season_number))
-            const seasonsToLoad = [...seasonsSet]
+            
+            primaryList.forEach(episodeData => {
+                if(episodeData.season_number && !seasonsSet.has(episodeData.season_number)) {
+                    seasonsSet.add(episodeData.season_number)
+                    seasonsToLoad.push(episodeData.season_number)
+                }
+            })
+            
+            if(missedList?.length) {
+                missedList.forEach(episodeData => {
+                    if(episodeData.season_number && !seasonsSet.has(episodeData.season_number)) {
+                        seasonsSet.add(episodeData.season_number)
+                        seasonsToLoad.push(episodeData.season_number)
+                    }
+                })
+            }
             
             if(seasonsToLoad.length){
-                Promise.all(seasonsToLoad.map(season => fetchSeason(tvId, season))).then(()=>{
+                Promise.all(seasonsToLoad.map(season => fetchSeasonFromCache(tvId, season))).then(()=>{
                     // Карта названий и сами объекты эпизодов
                     const nameMap = new Map()
                     const episodeMap = new Map()
@@ -358,8 +433,8 @@ function render(plan, opts = {}){
                             : span.innerText = episodeName ? `${node.badge} - ${episodeName}` : `${node.badge}`
 
                     })
-                }).catch(error => {
-                    console.warn('Failed to fetch episode names:', error)
+                }).catch(() => {
+                    // Если не удалось загрузить названия эпизодов - игнорируем
                 })
             }
         }
@@ -391,5 +466,7 @@ export default {
     getPlan,
     render,
     attach,
-    clearCache
+    clearCache,
+    getShowMetaFromCache,
+    fetchSeasonFromCache
 }
