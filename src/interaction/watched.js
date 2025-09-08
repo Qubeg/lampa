@@ -5,129 +5,303 @@ import TmdbApi from '../utils/api/tmdb'
 import Lang from '../utils/lang'
 import Utils from '../utils/math'
 import Cache from '../utils/cache'
+import Storage from '../utils/storage'
 
-// Кэш эпизодов по сезонам, чтобы не дёргать API повторно
-/** @type {Map<string, Array>} */
-const seasonCache = new Map() // key: `${tvId}:${season}` -> episodes[]
-const MAX_CACHE_SIZE = 100 // Максимальный размер кэша
+// Кэш для избежания множественных одновременных запросов к API
+const pendingRequests = new Map()
+
+// Контроллеры для отмены запросов
+const abortControllers = new Map()
 
 /**
- * Добавляет данные в кэш с ограничением размера
- * @param {string} key - Ключ кэша
- * @param {Array} data - Данные для кэширования
+ * Отменяет все активные запросы
  */
-function addToSeasonCache(key, data) {
-    // Если кэш переполнен - удаляем самые старые записи
-    if (seasonCache.size >= MAX_CACHE_SIZE) {
-        const firstKey = seasonCache.keys().next().value
-        seasonCache.delete(firstKey)
+function abortAllRequests() {
+    for (const [key, controller] of abortControllers.entries()) {
+        if (!controller.signal.aborted) {
+            controller.abort()
+        }
     }
-    seasonCache.set(key, data)
+    pendingRequests.clear()
+    abortControllers.clear()
 }
 
 /**
- * Очищает кэш сезонов
- * @param {number|string} [tvId] - ID сериала для частичной очистки, если не указан - очищает весь кэш
+ * Отменяет запросы по префиксу ключа
+ * @param {string} keyPrefix - Префикс ключа для отмены
  */
-function clearCache(tvId = null) {
-    if (tvId === null) {
-        seasonCache.clear()
-    } else {
-        // Удаляем все записи для конкретного сериала
-        for (const [cacheKey] of seasonCache) {
-            if (cacheKey.startsWith(`${tvId}:`)) {
-                seasonCache.delete(cacheKey)
-            }
+function abortRequestsByPrefix(keyPrefix) {
+    for (const [key, controller] of abortControllers.entries()) {
+        if (key.startsWith(keyPrefix) && !controller.signal.aborted) {
+            controller.abort()
+            pendingRequests.delete(key)
+            abortControllers.delete(key)
         }
     }
 }
 
 /**
- * Генерирует ключ для кэширования сезонов
+ * Генерирует ключ для кэширования сезонов в Storage
  * @param {number|string} tvId - ID сериала
  * @param {number|string} season - Номер сезона
  * @returns {string} Ключ для кэша
  */
-function buildCacheKey(tvId, season){
-    return `${tvId}:${season}`
+function buildSeasonCacheKey(tvId, season){
+    return `season_episodes_${tvId}_${season}`
 }
 
 /**
- * Получает метаданные сериала
+ * Сохраняет данные эпизодов в кэш
+ * @param {string} cacheKey - Ключ кэша
+ * @param {Array} episodes - Массив эпизодов
+ */
+function saveEpisodesToCache(cacheKey, episodes) {
+    try {
+        const seasonEpisodesCache = Storage.cache('season_episodes_cache', 1000, {})
+        seasonEpisodesCache[cacheKey] = {
+            episodes: episodes,
+            cached_at: Date.now()
+        }
+        Storage.set('season_episodes_cache', seasonEpisodesCache)
+    } catch (error) {
+        // Игнорируем ошибки записи в кэш
+    }
+}
+
+/**
+ * Проверяет актуальность кэша
+ * @param {Object} cached - Кэшированные данные
+ * @param {number} maxAge - Максимальный возраст кэша в миллисекундах
+ * @returns {boolean} true если кэш актуален
+ */
+function isCacheValid(cached, maxAge) {
+    if (!cached || !cached.cached_at) return false
+    const cacheAge = Date.now() - cached.cached_at
+    return cacheAge < maxAge
+}
+
+/**
+ * Очищает кэш сезонов из Storage
+ * @param {number|string} [tvId] - ID сериала для частичной очистки, если не указан - очищает весь кэш
+ */
+function clearCache(tvId = null) {
+    const seasonEpisodesCache = Storage.cache('season_episodes_cache', 1000, {})
+    
+    if (tvId === null) {
+        // Очищаем все кэши сезонов
+        Object.keys(seasonEpisodesCache).forEach(key => {
+            if (key.startsWith('season_episodes_')) {
+                delete seasonEpisodesCache[key]
+            }
+        })
+    } else {
+        // Удаляем все записи для конкретного сериала
+        Object.keys(seasonEpisodesCache).forEach(key => {
+            if (key.startsWith(`season_episodes_${tvId}_`)) {
+                delete seasonEpisodesCache[key]
+            }
+        })
+    }
+    
+    Storage.set('season_episodes_cache', seasonEpisodesCache)
+    
+    // Очищаем также кэш метаданных сериалов
+    if (tvId !== null) {
+        const metaCache = Storage.cache('tv_meta_cache', 500, {})
+        const metaKey = `tv_meta_${tvId}`
+        if (metaCache[metaKey]) {
+            delete metaCache[metaKey]
+            Storage.set('tv_meta_cache', metaCache)
+        }
+    }
+}
+
+/**
+ * Получает метаданные сериала из кэша
  * @param {Object} data - Данные сериала с id
  * @returns {Promise<Object|null>} Метаданные сериала или null
  */
 function getShowMetaFromCache(data) {
     if (!data?.id) return Promise.resolve(null)
     
-    // Сначала пробуем взять из кэша
-    return Cache.getData('tv_meta', data.id).then(cached => {
-        // Проверяем актуальность кэша (30 дней)
-        const cacheAge = cached?.cached_at ? Date.now() - cached.cached_at : Infinity
-        const maxAge = 30 * 24 * 60 * 60 * 1000 // 30 дней
-        
-        if (cached && cached.seasons && cacheAge < maxAge) {
-            return cached
-        }
-        
-        // Если нет в кэше или кэш устарел - запрашиваем из API и сохраняем
-        return new Promise(resolve => {
-            TmdbApi.get(`tv/${data.id}`, {}, (tvShowData) => {
-                if (tvShowData) {
-                    // Сохраняем в кэш только нужные данные
-                    const metaToCache = {
-                        id: tvShowData.id,
-                        seasons: tvShowData.seasons,
-                        cached_at: Date.now()
-                    }
-                    Cache.rewriteData('tv_meta', data.id, metaToCache).catch(() => {})
-                    resolve(tvShowData)
-                } else {
+    const cacheKey = `tv_meta_${data.id}`
+    const requestKey = `meta_${data.id}`
+    
+    // Предотвращаем множественные запросы к одному и тому же сериалу
+    if (pendingRequests.has(requestKey)) {
+        return pendingRequests.get(requestKey)
+    }
+    
+    // Создаем AbortController для возможности отмены запроса
+    const abortController = new AbortController()
+    abortControllers.set(requestKey, abortController)
+    
+    const promise = (async () => {
+        try {
+            // Проверяем не отменен ли запрос
+            if (abortController.signal.aborted) {
+                throw new Error('Request aborted')
+            }
+            
+            // Используем кэширование Storage.cache для быстрого доступа
+            const metaCache = Storage.cache('tv_meta_cache', 500, {})
+            
+            // Проверяем кэш в Storage (localStorage)
+            if (metaCache[cacheKey] && isCacheValid(metaCache[cacheKey], 30 * 24 * 60 * 60 * 1000)) {
+                return metaCache[cacheKey]
+            }
+            
+            // Проверяем IndexedDB
+            const cached = await Cache.getData('tv_meta', data.id).catch(() => null)
+            if (cached && isCacheValid(cached, 30 * 24 * 60 * 60 * 1000)) {
+                // Сохраняем в Storage для быстрого доступа
+                metaCache[cacheKey] = cached
+                Storage.set('tv_meta_cache', metaCache)
+                return cached
+            }
+            
+            // Проверяем снова не отменен ли запрос перед API вызовом
+            if (abortController.signal.aborted) {
+                throw new Error('Request aborted')
+            }
+            
+            // Запрашиваем из API с поддержкой отмены
+            const tvShowData = await new Promise((resolve, reject) => {
+                const onAbort = () => reject(new Error('Request aborted'))
+                abortController.signal.addEventListener('abort', onAbort)
+                
+                TmdbApi.get(`tv/${data.id}`, {}, (result) => {
+                    abortController.signal.removeEventListener('abort', onAbort)
+                    resolve(result)
+                }, () => {
+                    abortController.signal.removeEventListener('abort', onAbort)
                     resolve(null)
+                })
+            })
+            
+            if (tvShowData) {
+                const metaToCache = {
+                    id: tvShowData.id,
+                    seasons: tvShowData.seasons,
+                    cached_at: Date.now()
                 }
-            }, () => resolve(null))
-        })
-    }).catch(() => {
-        // Если ошибка чтения кэша - идем в API
-        return new Promise(resolve => {
-            TmdbApi.get(`tv/${data.id}`, {}, resolve, () => resolve(null))
-        })
-    })
+                
+                // Сохраняем в IndexedDB для долгосрочного хранения
+                Cache.rewriteData('tv_meta', data.id, metaToCache).catch(() => {})
+                
+                // Сохраняем в Storage для быстрого доступа
+                metaCache[cacheKey] = metaToCache
+                Storage.set('tv_meta_cache', metaCache)
+                
+                return tvShowData
+            }
+            
+            return null
+        } catch (error) {
+            if (error.message === 'Request aborted') {
+                throw error // Пробрасываем ошибку отмены
+            }
+            return null
+        } finally {
+            pendingRequests.delete(requestKey)
+            abortControllers.delete(requestKey)
+        }
+    })()
+    
+    pendingRequests.set(requestKey, promise)
+    return promise
 }
 
 /**
- * Получаем эпизоды сезона
+ * Получает эпизоды сезона из кэша или API
  * @param {number|string} tvId - ID сериала в TMDB
  * @param {number|string} season - Номер сезона
  * @returns {Promise<Array>} Массив эпизодов сезона
  */
 function fetchSeasonFromCache(tvId, season){
-    const cacheKey = buildCacheKey(tvId, season)
+    const cacheKey = buildSeasonCacheKey(tvId, season)
+    const requestKey = `season_${tvId}_${season}`
     
-    // Проверяем кэш в памяти
-    if(seasonCache.has(cacheKey)) {
-        return Promise.resolve(seasonCache.get(cacheKey))
+    // Предотвращаем множественные запросы к одному и тому же сезону
+    if (pendingRequests.has(requestKey)) {
+        return pendingRequests.get(requestKey)
     }
-
-    // Пробуем получить из IndexedDB через Timetable
-    return new Promise((resolve) => {
-        Timetable.getSeasonEpisodes({id: parseInt(tvId)}, parseInt(season), (episodes) => {
-            if (episodes && episodes.length > 0) {
-                addToSeasonCache(cacheKey, episodes)
-                resolve(episodes)
-            } else {
-                // Если нет в IndexedDB - идем в API
-                TmdbApi.get(`tv/${tvId}/season/${season}`, {}, (result) => {
-                    const episodes = (result?.episodes) || []
-                    addToSeasonCache(cacheKey, episodes)
-                    resolve(episodes)
-                }, () => {
-                    addToSeasonCache(cacheKey, [])
-                    resolve([])
-                })
+    
+    // Создаем AbortController для возможности отмены запроса
+    const abortController = new AbortController()
+    abortControllers.set(requestKey, abortController)
+    
+    const promise = (async () => {
+        try {
+            // Проверяем не отменен ли запрос
+            if (abortController.signal.aborted) {
+                throw new Error('Request aborted')
             }
-        })
-    })
+            
+            // Проверяем кэш в Storage (localStorage) для быстрого доступа
+            const seasonEpisodesCache = Storage.cache('season_episodes_cache', 1000, {})
+            if (seasonEpisodesCache[cacheKey] && isCacheValid(seasonEpisodesCache[cacheKey], 24 * 60 * 60 * 1000)) {
+                return seasonEpisodesCache[cacheKey].episodes
+            }
+
+            // Пробуем получить из IndexedDB через Timetable (долгосрочное хранение)
+            const episodes = await new Promise((resolve, reject) => {
+                const onAbort = () => reject(new Error('Request aborted'))
+                abortController.signal.addEventListener('abort', onAbort)
+                
+                Timetable.getSeasonEpisodes({id: parseInt(tvId)}, parseInt(season), (result) => {
+                    abortController.signal.removeEventListener('abort', onAbort)
+                    resolve(result)
+                })
+            })
+            
+            if (episodes && episodes.length > 0) {
+                // Сохраняем в Storage для быстрого доступа
+                saveEpisodesToCache(cacheKey, episodes)
+                return episodes
+            }
+            
+            // Проверяем снова не отменен ли запрос перед API вызовом
+            if (abortController.signal.aborted) {
+                throw new Error('Request aborted')
+            }
+            
+            // Если нет в IndexedDB - идем в API с поддержкой отмены
+            const result = await new Promise((resolve, reject) => {
+                const onAbort = () => reject(new Error('Request aborted'))
+                abortController.signal.addEventListener('abort', onAbort)
+                
+                TmdbApi.get(`tv/${tvId}/season/${season}`, {}, (result) => {
+                    abortController.signal.removeEventListener('abort', onAbort)
+                    resolve(result)
+                }, () => {
+                    abortController.signal.removeEventListener('abort', onAbort)
+                    resolve(null)
+                })
+            })
+            
+            const apiEpisodes = (result?.episodes) || []
+            
+            // Сохраняем результат (даже если пустой) чтобы не запрашивать повторно
+            saveEpisodesToCache(cacheKey, apiEpisodes)
+            
+            return apiEpisodes
+            
+        } catch (error) {
+            if (error.message === 'Request aborted') {
+                throw error // Пробрасываем ошибку отмены
+            }
+            // В случае ошибки сохраняем пустой результат
+            saveEpisodesToCache(cacheKey, [])
+            return []
+        } finally {
+            pendingRequests.delete(requestKey)
+            abortControllers.delete(requestKey)
+        }
+    })()
+    
+    pendingRequests.set(requestKey, promise)
+    return promise
 }
 
 /**
@@ -381,61 +555,70 @@ function render(plan, opts = {}){
 
         if(options.fetchNames && tvId){
             // Собираем уникальные сезоны
-            const seasonsToLoad = []
             const seasonsSet = new Set()
             
             primaryList.forEach(episodeData => {
-                if(episodeData.season_number && !seasonsSet.has(episodeData.season_number)) {
+                if(episodeData.season_number) {
                     seasonsSet.add(episodeData.season_number)
-                    seasonsToLoad.push(episodeData.season_number)
                 }
             })
             
-            if(missedList?.length) {
-                missedList.forEach(episodeData => {
-                    if(episodeData.season_number && !seasonsSet.has(episodeData.season_number)) {
-                        seasonsSet.add(episodeData.season_number)
-                        seasonsToLoad.push(episodeData.season_number)
-                    }
-                })
-            }
+            missedList?.forEach(episodeData => {
+                if(episodeData.season_number) {
+                    seasonsSet.add(episodeData.season_number)
+                }
+            })
+            
+            const seasonsToLoad = Array.from(seasonsSet)
             
             if(seasonsToLoad.length){
-                Promise.all(seasonsToLoad.map(season => fetchSeasonFromCache(tvId, season))).then(()=>{
-                    // Карта названий и сами объекты эпизодов
-                    const nameMap = new Map()
-                    const episodeMap = new Map()
-                    seasonsToLoad.forEach(seasonNumber => {
-                        const episodes = seasonCache.get(buildCacheKey(tvId, seasonNumber)) || []
-                        episodes.forEach(episode => {
-                            const key = `${seasonNumber}x${episode.episode_number}`
-                            nameMap.set(key, episode.name)
-                            episodeMap.set(key, episode)
+                // Используем Promise.allSettled для лучшей обработки ошибок
+                Promise.allSettled(seasonsToLoad.map(season => fetchSeasonFromCache(tvId, season)))
+                    .then((results) => {
+                        // Карта названий эпизодов
+                        const nameMap = new Map()
+                        const episodeMap = new Map()
+                        
+                        results.forEach((result, index) => {
+                            if (result.status === 'fulfilled') {
+                                const episodes = result.value || []
+                                const seasonNumber = seasonsToLoad[index]
+                                
+                                episodes.forEach(episode => {
+                                    const key = `${seasonNumber}x${episode.episode_number}`
+                                    nameMap.set(key, episode.name)
+                                    episodeMap.set(key, episode)
+                                })
+                            }
+                        })
+                        
+                        // Обновляем названия эпизодов
+                        nodes.forEach(node => {
+                            const episodeName = nameMap.get(node.key)
+                            const episodeObj = episodeMap.get(node.key)
+                            const span = node.node.querySelector('span')
+
+                            if(!span) return
+
+                            let futureText = ''
+                            if(episodeObj && episodeObj.air_date){
+                                const daysLeft = Utils.countDays(Date.now(), episodeObj.air_date)
+                                if(daysLeft > 0){
+                                    futureText = `${Lang.translate('full_episode_days_left')}: ${daysLeft}`
+                                    node.node.classList.add('card-watched__item')
+                                }
+                            }
+
+                            span.innerText = futureText 
+                                ? `${node.badge} / ${futureText}`
+                                : episodeName 
+                                    ? `${node.badge} - ${episodeName}` 
+                                    : node.badge
                         })
                     })
-                    nodes.forEach(node => {
-                        const episodeName = nameMap.get(node.key)
-                        const episodeObj  = episodeMap.get(node.key)
-                        const span = node.node.querySelector('span')
-
-                        if(!span) return
-
-                        let futureText = ''
-                        if(episodeObj && episodeObj.air_date){
-                            const daysLeft = Utils.countDays(Date.now(), episodeObj.air_date)
-                            if(daysLeft > 0){
-                                futureText = `${Lang.translate('full_episode_days_left')}: ${daysLeft}`
-                                node.node.classList.add('card-watched__item')
-                            }
-                        }
-
-                        futureText ? span.innerText = `${node.badge} / ${futureText}`
-                            : span.innerText = episodeName ? `${node.badge} - ${episodeName}` : `${node.badge}`
-
+                    .catch(() => {
+                        // Игнорируем ошибки загрузки названий эпизодов
                     })
-                }).catch(() => {
-                    // Если не удалось загрузить названия эпизодов - игнорируем
-                })
             }
         }
     }
@@ -468,5 +651,48 @@ export default {
     attach,
     clearCache,
     getShowMetaFromCache,
-    fetchSeasonFromCache
+    fetchSeasonFromCache,
+    
+    // Новые методы для управления запросами
+    abortAllRequests,
+    abortRequestsByPrefix,
+    
+    /**
+     * Очищает устаревшие данные из кэша
+     * @param {number} [maxAge=7*24*60*60*1000] - Максимальный возраст кэша в миллисекундах (по умолчанию 7 дней)
+     */
+    cleanupOldCache(maxAge = 7 * 24 * 60 * 60 * 1000) {
+        const now = Date.now()
+        
+        // Очищаем старые эпизоды
+        const seasonCache = Storage.cache('season_episodes_cache', 1000, {})
+        let seasonChanged = false
+        Object.keys(seasonCache).forEach(key => {
+            const item = seasonCache[key]
+            if (item && item.cached_at && (now - item.cached_at) > maxAge) {
+                delete seasonCache[key]
+                seasonChanged = true
+            }
+        })
+        if (seasonChanged) {
+            Storage.set('season_episodes_cache', seasonCache)
+        }
+        
+        // Очищаем старые метаданные
+        const metaCache = Storage.cache('tv_meta_cache', 500, {})
+        let metaChanged = false
+        Object.keys(metaCache).forEach(key => {
+            const item = metaCache[key]
+            if (item && item.cached_at && (now - item.cached_at) > maxAge) {
+                delete metaCache[key]
+                metaChanged = true
+            }
+        })
+        if (metaChanged) {
+            Storage.set('tv_meta_cache', metaCache)
+        }
+        
+        // Очищаем активные запросы
+        abortAllRequests()
+    }
 }

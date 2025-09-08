@@ -271,7 +271,7 @@ function clear(full){
     else{
         Noty.show(Lang.translate('settings_clear_cache_only'))
 
-        let need = ['online_view','ser_clarifys','torrents_view','account_bookmarks','recomends_list','file_view','timetable','search_history','recomends_scan']
+        let need = ['online_view','ser_clarifys','torrents_view','account_bookmarks','recomends_list','file_view','timetable','search_history','recomends_scan','season_episodes_cache','tv_meta_cache']
         let more = ['online_','file_view_','storage_']
 
         for (var key in localStorage){
