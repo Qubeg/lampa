@@ -254,7 +254,7 @@ function Card(data, params = {}){
         const mount = this.card.querySelector('.card__view')
         if(this.watched_wrap) this.watched_wrap.remove()
 
-        Watched.getPlan(data).then(plan => {
+        Watched.getPlan(data, { abortKey: this.watched_abort_key }).then(plan => {
             if(!plan) return
             this.watched_wrap = Watched.render(plan, { 
                 mount, 
