@@ -254,26 +254,22 @@ function Card(data, params = {}){
         const mount = this.card.querySelector('.card__view')
         if(this.watched_wrap) this.watched_wrap.remove()
 
-        // Дебаунс - запускаем запрос только через 150мс после последнего вызова
-        clearTimeout(this.watched_timeout)
-        this.watched_timeout = setTimeout(() => {
-            Watched.getPlan(data).then(plan => {
-                if(!plan) return
-                this.watched_wrap = Watched.render(plan, { 
-                    mount, 
-                    position: 'prepend', 
-                    withTimeline: true, 
-                    fetchNames: true,
-                    abortKey: this.watched_abort_key
-                })
-                this.watched_checked = true
-            }).catch(error => {
-                if (error.message !== 'Request aborted') {
-                    console.error('Card watched error:', error)
-                }
-                this.watched_checked = true
+        Watched.getPlan(data).then(plan => {
+            if(!plan) return
+            this.watched_wrap = Watched.render(plan, { 
+                mount, 
+                position: 'prepend', 
+                withTimeline: true, 
+                fetchNames: true,
+                abortKey: this.watched_abort_key
             })
-        }, 150)
+            this.watched_checked = true
+        }).catch(error => {
+            if (error.message !== 'Request aborted') {
+                console.error('Card watched error:', error)
+            }
+            this.watched_checked = true
+        })
     }
 
     /**
@@ -459,20 +455,28 @@ function Card(data, params = {}){
     this.create = function(){
         this.build()
 
+        // Дебаунс для вызовов watched
+        const debouncedWatched = () => {
+            clearTimeout(this.watched_debounce_timer)
+            this.watched_debounce_timer = setTimeout(() => {
+                this.watched()
+            }, 150)
+        }
+
         this.card.addEventListener('hover:focus',()=>{
-            this.watched()
+            debouncedWatched()
 
             if(this.onFocus) this.onFocus(this.card, data)
         })
 
         this.card.addEventListener('hover:touch',()=>{
-            this.watched()
+            debouncedWatched()
 
             if(this.onTouch) this.onTouch(this.card, data)
         })
         
         this.card.addEventListener('hover:hover',()=>{
-            this.watched()
+            debouncedWatched()
 
             if(this.onHover) this.onHover(this.card, data)
         })
