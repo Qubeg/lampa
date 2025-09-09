@@ -442,23 +442,34 @@ function getPlanTv(data, options = {}){
                 const curSeason  = current.season_number
                 const curEpisode = current.episode_number
 
+                // Ищем пропущенные эпизоды во всех предыдущих сезонах и в текущем сезоне до текущего эпизода
                 const missedList = []
-                if(curEpisode > 1){
-                    let gapStart = null
-                    for(let episodeNum = 1; episodeNum < curEpisode; episodeNum++){
-                        const percent = Timeline.view(hashEpisode(data.original_title, curSeason, episodeNum)).percent
-                        if(percent === 0){
-                            if(gapStart === null) gapStart = episodeNum
-                        } else if(gapStart !== null){
-                            break
-                        }
-                    }
-                    if(gapStart !== null){
-                        for(let episodeNum = gapStart; episodeNum < curEpisode && missedList.length < 3; episodeNum++){
-                            const percent = Timeline.view(hashEpisode(data.original_title, curSeason, episodeNum)).percent
-                            if(percent === 0){
-                                missedList.push({ season_number: curSeason, episode_number: episodeNum })
-                            } else break
+                const MAX_MISSED = 3
+                // Читаем сводку прогресса один раз, чтобы не дёргать Timeline.view в цикле
+                const viewedMap = Storage.cache(Timeline.filename(), 10000, {})
+                const getPercent = (season, episode) => {
+                    const h = hashEpisode(data.original_title, season, episode)
+                    const v = viewedMap[h]
+                    if(typeof v === 'object') return v.percent || 0
+                    if(typeof v === 'number') return v || 0
+                    return 0
+                }
+
+                // Сканируем сезоны по возрастанию до текущего
+                for (let i = 0; i < seasons.length && missedList.length < MAX_MISSED; i++) {
+                    const seasonInfo = seasons[i]
+                    const sNum = seasonInfo.season_number
+                    // Для текущего сезона — только до текущего эпизода (не включая его)
+                    const lastEpisodeToCheck = sNum === curSeason
+                        ? Math.max(1, curEpisode - 1)
+                        : (seasonInfo.episode_count || 0)
+
+                    if (sNum > curSeason || lastEpisodeToCheck < 1) continue
+
+                    for (let eNum = 1; eNum <= lastEpisodeToCheck && missedList.length < MAX_MISSED; eNum++) {
+                        const percent = getPercent(sNum, eNum)
+                        if (percent === 0) {
+                            missedList.push({ season_number: sNum, episode_number: eNum })
                         }
                     }
                 }
@@ -669,7 +680,6 @@ export default {
     clearCache,
     getShowMetaFromCache,
     fetchSeasonFromCache,
-    
     abortAllRequests,
     abortRequestsByPrefix,
     
