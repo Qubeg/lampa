@@ -554,6 +554,11 @@ function render(plan, opts = {}){
         body.appendChild(fragment)
 
         if(options.fetchNames && tvId){
+            // Отменяем предыдущие запросы названий для этого ключа
+            if(options.abortKey) {
+                abortRequestsByPrefix(options.abortKey + '_names')
+            }
+            
             // Собираем уникальные сезоны
             const seasonsSet = new Set()
             

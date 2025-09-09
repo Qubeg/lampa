@@ -243,17 +243,37 @@ function Card(data, params = {}){
     this.watched = function(){
         if(!Storage.field('card_episodes') || this.watched_checked) return
 
+        // Отменяем предыдущие запросы для карточки
+        if(this.watched_abort_key) {
+            Watched.abortRequestsByPrefix(this.watched_abort_key)
+        }
+        
+        // Создаем уникальный ключ для карточки
+        this.watched_abort_key = `card_${data?.id || 'unknown'}_${Date.now()}`
+
         const mount = this.card.querySelector('.card__view')
         if(this.watched_wrap) this.watched_wrap.remove()
 
-        Watched.getPlan(data).then(plan => {
-            if(!plan) return
-            this.watched_wrap = Watched.render(plan, { mount, position: 'prepend', withTimeline: true, fetchNames: true })
-            this.watched_checked = true
-        }).catch(error => {
-            console.error('Card watched error:', error)
-            this.watched_checked = true
-        })
+        // Дебаунс - запускаем запрос только через 150мс после последнего вызова
+        clearTimeout(this.watched_timeout)
+        this.watched_timeout = setTimeout(() => {
+            Watched.getPlan(data).then(plan => {
+                if(!plan) return
+                this.watched_wrap = Watched.render(plan, { 
+                    mount, 
+                    position: 'prepend', 
+                    withTimeline: true, 
+                    fetchNames: true,
+                    abortKey: this.watched_abort_key
+                })
+                this.watched_checked = true
+            }).catch(error => {
+                if (error.message !== 'Request aborted') {
+                    console.error('Card watched error:', error)
+                }
+                this.watched_checked = true
+            })
+        }, 150)
     }
 
     /**
