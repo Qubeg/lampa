@@ -570,7 +570,7 @@ function loadTask(){
  * Загрузка языка
  */
 function loadLang(){
-    let code = window.localStorage.getItem('language') || 'ru'
+    let code = Storage.get('language', 'ru')
 
     LoadingProgress.step(1)
     
@@ -605,24 +605,27 @@ function loadLang(){
 function loadApp(){
     prepareApp() //готовим приложение
 
-    //если язык уже установлен, то запускаем приложение
-    if(window.localStorage.getItem('language') || !window.lampa_settings.lang_use){
-        //но сперва ожидаем не вызвали ли пользователь меню разработчика, затем подгружаем язык
-        developerApp(loadLang)
-    }
-    else{
-        //иначе предлагаем выбрать язык
-        LangChoice.open((code)=>{
-            Storage.set('language', code, true)
-            Storage.set('tmdb_lang',code, true)
+    // Дожидаемся готовности Storage (резерв из Cache), затем принимаем решение по языку
+    Storage.ready().then(()=>{
+        //если язык уже установлен, то запускаем приложение
+        if(Storage.get('language') || !window.lampa_settings.lang_use){
+            //но сперва ожидаем не вызвали ли пользователь меню разработчика, затем подгружаем язык
+            developerApp(loadLang)
+        }
+        else{
+            //иначе предлагаем выбрать язык
+            LangChoice.open((code)=>{
+                Storage.set('language', code, true)
+                Storage.set('tmdb_lang',code, true)
 
-            Keypad.disable()
+                Keypad.disable()
 
-            loadLang()
-        })
+                loadLang()
+            })
 
-        Keypad.enable()
-    }
+            Keypad.enable()
+        }
+    })
 }
 
 if(!window.fitst_load){

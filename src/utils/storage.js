@@ -10,8 +10,19 @@ let listener = Subscribe();
 let readed   = {}
 let workers  = {}
 let reserve  = {}
+let _inited = false
+let _readyResolve
+const _readyPromise = new Promise((resolve)=>{ _readyResolve = resolve })
+function _markReady(){
+    if(_readyResolve){
+        _readyResolve()
+        _readyResolve = null
+    }
+}
 
 function init(){
+    if(_inited) return
+    _inited = true
     sync('online_view','array_string')
     sync('torrents_view','array_string')
     sync('search_history','array_string')
@@ -24,11 +35,14 @@ function init(){
             console.log('Storage', 'load cache:', result.length)
 
             result.forEach(data=>{
-                reserve[data.key] = data[data.value]
+                // store cached value by key
+                reserve[data.key] = data.value
             })
         }
+        _markReady()
     }).catch((e)=>{
         console.log('Storage', 'cache error:', e.message, e.stack, e)
+        _markReady()
     })
 }
 
@@ -322,6 +336,10 @@ function getsize(call){
 export default {
     listener,
     init,
+    ready: ()=>{
+        if(!_inited) init()
+        return _readyPromise
+    },
     get,
     set,
     field,
