@@ -368,7 +368,10 @@ function full(params = {}, oncomplite, onerror){
 
     if(Utils.dcma(params.method, params.id)) return onerror()
 
-    get(params.method+'/'+params.id+'?append_to_response=content_ratings,release_dates,external_ids,keywords,alternative_titles',params,(json)=>{
+    tmdbCall(
+        params.method+'/'+params.id,
+        params,
+        (json)=>{
         json.source = 'tmdb'
 
         if(json.external_ids){
@@ -378,14 +381,14 @@ function full(params = {}, oncomplite, onerror){
         if(params.method == 'tv'){
             let season = Utils.countSeasons(json)
 
-            get('tv/'+json.id+'/season/'+season,{},(ep)=>{
+            tmdbCall('tv/'+json.id+'/season/'+season,{},(ep)=>{
                 status.append('episodes', ep)
             },status.error.bind(status))
         }
         else status.need--
 
         if(json.belongs_to_collection){
-            get('collection/'+json.belongs_to_collection.id,{},(collection)=>{
+            tmdbCall('collection/'+json.belongs_to_collection.id,{},(collection)=>{
                 collection.results = collection.parts.slice(0,19)
 
                 status.append('collection', collection)
@@ -398,17 +401,17 @@ function full(params = {}, oncomplite, onerror){
         status.need -= 2
 
         status.error()
-    })
+    }, { query: { append_to_response: 'content_ratings,release_dates,external_ids,keywords,alternative_titles' } })
 
-    get(params.method+'/'+params.id+'/credits',params,(json)=>{
+    tmdbCall(params.method+'/'+params.id+'/credits',params,(json)=>{
         status.append('persons', json)
     },status.error.bind(status))
 
-    get(params.method+'/'+params.id+'/recommendations',params,(json)=>{
+    tmdbCall(params.method+'/'+params.id+'/recommendations',params,(json)=>{
         status.append('recomend', json)
     },status.error.bind(status))
 
-    get(params.method+'/'+params.id+'/similar',params,(json)=>{
+    tmdbCall(params.method+'/'+params.id+'/similar',params,(json)=>{
         status.append('simular', json)
     },status.error.bind(status))
 
@@ -441,14 +444,14 @@ function videos(params = {}, oncomplite, onerror){
             oncomplite({results: data})
         }
 
-    get(params.method+'/'+params.id+'/videos',{langs: Storage.field('tmdb_lang')},(json)=>{
+    tmdbCall(params.method+'/'+params.id+'/videos',{langs: Storage.field('tmdb_lang')},(json)=>{
         status.append('one', json)
-    },status.error.bind(status))
+    },status.error.bind(status), { langs: Storage.field('tmdb_lang') })
 
     if(lg !== 'en'){
-        get(params.method+'/'+params.id+'/videos',{langs: 'en'},(json)=>{
+        tmdbCall(params.method+'/'+params.id+'/videos',{langs: 'en'},(json)=>{
             status.append('two', json)
-        },status.error.bind(status))
+        },status.error.bind(status), { langs: 'en' })
     }
 }
 
@@ -458,11 +461,40 @@ function list(params = {}, oncomplite, onerror){
     network.silent(u,oncomplite, onerror)
 }
 
+/**
+ * Вызов TMDB-эндпоинта
+ * path — строка без домена (например, 'movie/123', 'tv/1/season/2').
+ * opts.query — дополнительные query (append_to_response и пр.).
+ * opts.langs — язык для прямого запроса (иначе берётся из Storage).
+ */
+function tmdbCall(path, params, success, error, opts = {}){
+    const isDmcaDisabled = window.lampa_settings.disable_features && window.lampa_settings.disable_features.dmca
+
+    if (isDmcaDisabled){
+        const lang = opts.langs || Storage.field('tmdb_lang')
+        const extra = opts.query || {}
+        const search = new URLSearchParams({ api_key: TMDB.key(), language: lang, ...extra }).toString()
+        const directUrl = 'https://api.themoviedb.org/3/' + path + (search ? '?' + search : '')
+        return network.silent(directUrl, success, error)
+    }
+
+    let finalPath = path
+    if (opts.query && Object.keys(opts.query).length){
+        const q = { ...opts.query }
+        delete q.language
+        const qs = new URLSearchParams(q).toString()
+        if(qs) finalPath += (finalPath.indexOf('?') >= 0 ? '&' : '?') + qs
+    }
+
+    const p = opts.langs ? { ...(params || {}), langs: opts.langs } : params
+    return get(finalPath, p, success, error)
+}
+
 function get(method, params = {}, oncomplite, onerror){
     let u = url(method, params)
     
     network.timeout(1000 * 10)
-    network.silent(u,(json)=>{
+    network.silent(u, (json)=>{
         json.url = method
 
         oncomplite(json)
