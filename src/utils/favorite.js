@@ -8,9 +8,53 @@ let listener = Subscribe()
 let category = ['like', 'wath', 'book', 'history', 'look', 'viewed', 'scheduled', 'continued', 'thrown']
 let marks    = ['look', 'viewed', 'scheduled', 'continued', 'thrown']
 
+// Индекс для поиска карточек
+let cardIndex = null
+
 
 function save(){
     Storage.set('favorite', data)
+}
+
+/**
+ * Построить индекс карточек для поиска
+ */
+function buildIndex() {
+    if (!cardIndex) {
+        cardIndex = new Map()
+        data.card.forEach(card => {
+            if (card && card.id !== undefined) {
+                cardIndex.set(card.id, card)
+            }
+        })
+    }
+}
+
+/**
+ * Добавить карточку в индекс
+ * @param {Object} card 
+ */
+function addToIndex(card) {
+    if (cardIndex && card && card.id !== undefined) {
+        cardIndex.set(card.id, card)
+    }
+}
+
+/**
+ * Удалить карточку из индекса
+ * @param {*} id 
+ */
+function removeFromIndex(id) {
+    if (cardIndex && id !== undefined) {
+        cardIndex.delete(id)
+    }
+}
+
+/**
+ * Очистить индекс (при перезагрузке данных)
+ */
+function clearIndex() {
+    cardIndex = null
 }
 
 /**
@@ -23,8 +67,6 @@ function add(where, card, limit){
         listener.send('add', {where, card})
     }
     else{
-        //read()
-
         let find = data[where].find(id=>id == card.id)
 
         if(!find){
@@ -32,7 +74,10 @@ function add(where, card, limit){
 
             listener.send('add', {where, card})
 
-            if(!search(card.id)) data.card.push(card)
+            if(!search(card.id)) {
+                data.card.push(card)
+                addToIndex(card)
+            }
 
             if(limit){
                 let excess = data[where].slice(limit)
@@ -76,6 +121,7 @@ function remove(where, card){
 
             if(!check(element).any){
                 Arrays.remove(data.card, element)
+                removeFromIndex(element.id)
 
                 listener.send('remove', {where, card: element, method: 'card'})
             } 
@@ -91,6 +137,12 @@ function remove(where, card){
  * @returns Object
  */
 function search(id){
+    // Если индекс построен, используем его поиска
+    if (cardIndex) {
+        return cardIndex.get(id) || undefined
+    }
+    
+    // Fallback на линейный поиск если индекс не готов
     let found
 
     for (let index = 0; index < data.card.length; index++) {
@@ -193,16 +245,15 @@ function get(params){
         return Account.get(params)
     }
     else{
-        //read()
+        buildIndex()
 
         let result = []
         let ids    = data[params.type]
 
         ids.forEach(id => {
-            for (let i = 0; i < data.card.length; i++) {
-                const card = data.card[i];
-                
-                if(card.id == id) result.push(card)
+            const card = cardIndex.get(id)
+            if (card) {
+                result.push(card)
             }
         })
 
@@ -220,8 +271,6 @@ function clear(where, card){
         Account.clear(where)
     }
     else{
-        //read()
-
         if(card) remove(where, card)
         else{
             for(let i = data[where].length - 1; i >= 0; i--){
@@ -248,6 +297,9 @@ function read(){
     })
 
     Arrays.extend(data, empty)
+    
+    // Очищаем индекс при перезагрузке данных
+    clearIndex()
 }
 
 /**

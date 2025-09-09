@@ -233,7 +233,7 @@ function favorite(params = {}, oncomplite, onerror){
             }
 
             tic++
-        },1000)
+        }, 200)
     }
     else extract()
 }
