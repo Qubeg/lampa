@@ -697,10 +697,6 @@ function gup( name, url ) {
 }
 
 function dcma(media, id){
-    if(window.lampa_settings.disable_features && window.lampa_settings.disable_features.dmca){
-        return false
-    }
-    
     return window.lampa_settings.dcma && window.lampa_settings.dcma.find(a=>a.cat == media && a.id == id)
 }
 

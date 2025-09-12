@@ -60,8 +60,7 @@ function component(object){
         html.append(scroll.render())
 
         Api.full(object,(data)=>{
-            if(data.movie && data.movie.blocked &&
-                !(window.lampa_settings.disable_features && window.lampa_settings.disable_features.dmca)){
+            if(data.movie && data.movie.blocked){
                 this.empty({blocked: true})
             }
             else if(data.movie){
@@ -182,8 +181,7 @@ function component(object){
         if(button) empty.append(button)
 
         empty.addInfoButton([
-            ['Movie id', object.id],
-            ['DMCA', Utils.dcma(object.method, object.id) ? 'Yes' : 'No']
+            ['Movie id', object.id]
         ])
 
         scroll.append(empty.render(true))

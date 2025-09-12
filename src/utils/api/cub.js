@@ -174,6 +174,12 @@ function category(params = {}, oncomplite, onerror){
     let parts_data  = [
         (call)=>{
             let json = {results: books, title: params.url == 'tv' ? Lang.translate('title_continue') : Lang.translate('title_watched')}
+
+            if(params.url == 'tv'){
+                json.ad    = 'notice',
+                json.type  = params.url
+            }
+
             call(json)
         },
         (call)=>{
@@ -197,6 +203,12 @@ function category(params = {}, oncomplite, onerror){
         (call)=>{
             get('?cat='+params.url+'&sort=now_playing'+airdate,params,(json)=>{
                 json.title = Lang.translate('title_now_watch')
+
+                if(params.url == 'tv'){
+                    json.ad    = 'bot'
+                    json.type  = params.url
+                }
+
                 call(json)
             },call)
         },
@@ -357,15 +369,7 @@ function full(params, oncomplite, onerror){
 
     if(Utils.dcma(params.method, params.id)) return onerror()
 
-    let isDmcaDisabled = window.lampa_settings.disable_features && window.lampa_settings.disable_features.dmca
-    let apiCall = isDmcaDisabled ? 
-        (method, params, success, error) => {
-            let tmdbUrl = 'https://api.themoviedb.org/' + method
-            network.silent(tmdbUrl, success, error)
-        } : 
-        get
-
-    apiCall('3/'+params.method+'/'+params.id+'?api_key='+TMDBApi.key()+'&append_to_response=content_ratings,release_dates,keywords,alternative_titles&language='+Storage.field('tmdb_lang'),params,(json)=>{
+    get('3/'+params.method+'/'+params.id+'?api_key='+TMDBApi.key()+'&append_to_response=content_ratings,release_dates,keywords,alternative_titles&language='+Storage.field('tmdb_lang'),params,(json)=>{
         if(json.status_code) return status.stop(),onerror()
 
         json.source = 'tmdb'

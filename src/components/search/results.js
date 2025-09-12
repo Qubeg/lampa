@@ -103,10 +103,6 @@ function create(source){
     }
 
     this.dmca = function(result){
-        if(window.lampa_settings.disable_features && window.lampa_settings.disable_features.dmca) {
-            return
-        }
-        
         if(Arrays.isArray(window.lampa_settings.dcma)){
             result.forEach((data)=>{
                 data.results = data.results.filter((item)=>{
@@ -121,8 +117,7 @@ function create(source){
 
         source.params.card_view = 6
 
-        if(!(window.lampa_settings.disable_features &&
-            window.lampa_settings.disable_features.dmca) && Arrays.isArray(window.lampa_settings.dcma)){
+        if(Arrays.isArray(window.lampa_settings.dcma)){
             data.results = data.results.filter((item)=>{
                 return !window.lampa_settings.dcma.find((b)=>b.id == item.id && b.cat == (item.name ? 'tv' : 'movie'))
             })

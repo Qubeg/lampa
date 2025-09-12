@@ -95,12 +95,7 @@ let html = `<div>
         <div class="settings-param__descr">#{settings_rest_card_episodes_descr}</div>
     </div>
 
-    <div class="settings-param selector god-mode-setting" data-type="toggle" data-name="disable_dmca" style="display: none">
-        <div class="settings-param__name">#{settings_rest_disable_dmca}</div>
-        <div class="settings-param__value"></div>
-    </div>
-
-    <div class="settings-param selector god-mode-setting" data-type="toggle" data-name="disable_trailers" style="display: none">
+    <div class="settings-param selector data-type="toggle" data-name="disable_trailers">
         <div class="settings-param__name">#{settings_rest_disable_trailers}</div>
         <div class="settings-param__value"></div>
     </div>

@@ -14,7 +14,6 @@ let defaults = {}
 let listener = Subscribe()
 
 const reloadParams = [
-    'disable_dmca',
     'disable_trailers'
 ]
 
@@ -732,7 +731,6 @@ trigger('card_interfice_cover', true)
 trigger('card_interfice_reactions', true)
 trigger('cache_images', false)
 trigger('interface_sound_play', false)
-trigger('disable_dmca', false)
 trigger('disable_trailers', false)
 
 /**

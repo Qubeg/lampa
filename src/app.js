@@ -144,7 +144,6 @@ Arrays.extend(window.lampa_settings,{
     white_use: false,
 
     disable_features: {
-        dmca: Storage.field('disable_dmca'),
         reactions: false,
         discuss: false,
         ai: false,
@@ -162,10 +161,6 @@ Arrays.extend(window.lampa_settings,{
     feed: true
 })
 
-if(window.lampa_settings.disable_features.dmca){
-    window.lampa_settings.dcma = false
-    delete window.lampa_settings.dcma
-}
 
 if(window.localStorage.getItem('remove_white_and_demo')){
     window.lampa_settings.demo         = false
