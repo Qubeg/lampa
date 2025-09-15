@@ -170,7 +170,7 @@ function component(object){
 
         let text  = {}
 
-        if(Utils.dcma(object.method, object.id) || er.blocked){
+        if(Utils.dmca(object.method, object.id) || er.blocked){
             text.title  = Lang.translate('dmca_title')
             text.descr  = Lang.translate('dmca_descr')
             text.noicon = true

@@ -155,7 +155,7 @@ Arrays.extend(window.lampa_settings,{
 
     lang_use: true,
     read_only: false,
-    dcma: false,
+    dmca: false,
     push_state: true,
     iptv: false,
     feed: true

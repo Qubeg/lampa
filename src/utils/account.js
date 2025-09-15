@@ -98,8 +98,8 @@ function init(){
         showProfiles('head')
     })
 
-    network.silent(Utils.protocol() + 'tmdb.'+Manifest.cub_domain+'/blocked',(dcma)=>{
-        window.lampa_settings.dcma = dcma
+    network.silent(Utils.protocol() + 'tmdb.'+Manifest.cub_domain+'/blocked',(dmca)=>{
+        window.lampa_settings.dmca = dmca
     })
 
     setInterval(checkValidAccount, 1000 * 60 * 10)

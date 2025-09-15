@@ -696,8 +696,8 @@ function gup( name, url ) {
     return results == null ? null : results[1]
 }
 
-function dcma(media, id){
-    return window.lampa_settings.dcma && window.lampa_settings.dcma.find(a=>a.cat == media && a.id == id)
+function dmca(media, id){
+    return window.lampa_settings.dmca && window.lampa_settings.dmca.find(a=>a.cat == media && a.id == id)
 }
 
 function inputDisplay(value){
@@ -902,7 +902,7 @@ export default {
     rewriteIfHTTPS,
     checkEmptyUrl,
     gup,
-    dcma,
+    dmca,
     inputDisplay,
     filterCardsByType,
     buildUrl,
