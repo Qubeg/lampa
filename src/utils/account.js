@@ -124,7 +124,16 @@ function init(){
 function task(call){
     if(!window.lampa_settings.account_use) return call()
 
-    update(call)
+    let account = Storage.get('account','{}')
+
+    if(account.token && (!account.profile || !account.profile.id)){
+        checkProfile(()=>{
+            update(call)
+        })
+    }
+    else{
+        update(call)
+    }
 }
 
 function checkProfile(call){

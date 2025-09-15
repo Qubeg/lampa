@@ -546,16 +546,21 @@ function loadTask(){
         Account.task(finish)
     })
 
+    // Дожидаемся фактической загрузки плагинов до старта приложения
+    Task.queue((next)=>{
+        LoadingProgress.status('Loading plugins')
+        Plugins.load(()=>{
+            LoadingProgress.status('Plugins loaded')
+            next()
+        })
+    })
+
     Task.secondary(()=>{
         OtherLibs.init()
     })
 
     Task.secondary(()=>{
-        setTimeout(startApp, 400)
-    })
-
-    Task.secondary(()=>{
-        Plugins.load(startApp)
+        startApp()
     })
 
     Task.start()

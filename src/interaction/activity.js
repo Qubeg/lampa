@@ -256,7 +256,9 @@ function init(){
         wait = false
     },1500)
 
-    setTimeout(last,500)
+    Lampa.Listener.follow('app', function (e) {
+        if(e.type === 'ready') last()
+    })
 
     window.addEventListener('popstate', () => {
         if(window.god_enabled) Lampa.Noty.show('Popstate - ['+(fullout || wait)+']')

@@ -176,6 +176,11 @@ function load(call){
         original[encode] = url
     })
 
+    if(!include.length){
+        call()
+        return
+    }
+
     Utils.putScriptAsync(include,()=>{
         call()
 
