@@ -115,21 +115,21 @@ import OtherCards from './utils/other/cards'
  * Настройки приложения
  */
 
-if(typeof window.lampa_settings == 'undefined'){
+if (typeof window.lampa_settings == 'undefined') {
     window.lampa_settings = {}
 }
 
 let torrents_use = true
-let agent        = navigator.userAgent.toLowerCase()
-let conditions   = [
+let agent = navigator.userAgent.toLowerCase()
+let conditions = [
     agent.indexOf("ipad") > -1 && window.innerWidth == 1920 && window.innerHeight == 1080,
     agent.indexOf("lampa_client_yasha") > -1,
     typeof AndroidJS !== 'undefined' && (AndroidJS.appVersion() + '').toLowerCase().indexOf('rustore') > -1 && !localStorage.getItem('parser_use')
 ]
 
-if(conditions.indexOf(true) >= 0) torrents_use = false
+if (conditions.indexOf(true) >= 0) torrents_use = false
 
-Arrays.extend(window.lampa_settings,{
+Arrays.extend(window.lampa_settings, {
     socket_use: true,
     socket_url: undefined,
     socket_methods: true,
@@ -162,23 +162,23 @@ Arrays.extend(window.lampa_settings,{
 })
 
 
-if(window.localStorage.getItem('remove_white_and_demo')){
-    window.lampa_settings.demo         = false
-    window.lampa_settings.white_use    = false
+if (window.localStorage.getItem('remove_white_and_demo')) {
+    window.lampa_settings.demo = false
+    window.lampa_settings.white_use = false
 }
 
-if(window.lampa_settings.iptv){
-    window.lampa_settings.socket_use    = false
+if (window.lampa_settings.iptv) {
+    window.lampa_settings.socket_use = false
     window.lampa_settings.plugins_store = false
-    window.lampa_settings.plugins_use   = false
-    window.lampa_settings.account_sync  = false
-    window.lampa_settings.torrents_use  = false
+    window.lampa_settings.plugins_use = false
+    window.lampa_settings.account_sync = false
+    window.lampa_settings.torrents_use = false
 }
 
 /**
  * Делаем классы доступными в глобальной области видимости
  */
-function initClass(){
+function initClass() {
     window.Lampa = {
         Listener: Subscribe(),
         Lang,
@@ -271,8 +271,8 @@ function initClass(){
 /**
  * Подготовка приложения к запуску
  */
-function prepareApp(){
-    if(window.prepared_app) return
+function prepareApp() {
+    if (window.prepared_app) return
 
     LoadingProgress.init()
 
@@ -310,14 +310,14 @@ function prepareApp(){
 
     //передаем фокус в контроллер
 
-    Navigator.follow('focus', (event)=>{
+    Navigator.follow('focus', (event) => {
         Controller.focus(event.elem)
     })
 
     //выход в начальном скрине
 
-    Keypad.listener.follow('keydown',(e)=>{
-        if(window.appready || Controller.enabled().name == 'modal' || (Platform.is('browser') || Platform.desktop())) return
+    Keypad.listener.follow('keydown', (e) => {
+        if (window.appready || Controller.enabled().name == 'modal' || (Platform.is('browser') || Platform.desktop())) return
 
         if (e.code == 8 || e.code == 27 || e.code == 461 || e.code == 10009 || e.code == 88) App.modalClose()
     })
@@ -326,8 +326,8 @@ function prepareApp(){
 
     //отключаем правый клик
 
-    if(window.innerWidth > 1280) window.addEventListener("contextmenu", e => e.preventDefault())
-    
+    if (window.innerWidth > 1280) window.addEventListener("contextmenu", e => e.preventDefault())
+
     App.loadStyle()
 
     LoadingProgress.status('Loaded styles')
@@ -342,47 +342,47 @@ function prepareApp(){
 /**
  * Меню разработчика
  */
-function developerApp(proceed){
-    let expect  = true
+function developerApp(proceed) {
+    let expect = true
     let pressed = 0
 
-    let timer   = setTimeout(()=>{
-        expect  = false
+    let timer = setTimeout(() => {
+        expect = false
 
         proceed()
     }, 1000)
 
-    let check = ()=>{
+    let check = () => {
         pressed++
 
-        if(pressed === 3){
+        if (pressed === 3) {
             clearTimeout(timer)
 
             expect = false
 
             Keypad.enable()
 
-            Developer.open(()=>{
+            Developer.open(() => {
                 Keypad.disable()
 
                 proceed()
             })
 
-            console.log('Developer mode','on')
+            console.log('Developer mode', 'on')
         }
     }
 
-    let keydown = (event)=>{
-        if(expect){
-            if(event.keyCode === 38||event.keyCode === 29460||event.keyCode === 50400012) check()
+    let keydown = (event) => {
+        if (expect) {
+            if (event.keyCode === 38 || event.keyCode === 29460 || event.keyCode === 50400012) check()
         }
-        else{
+        else {
             document.removeEventListener('keydown', keydown)
         }
     }
 
-    $('.welcome').on('click', (e)=>{
-        if(expect && DeviceInput.canClick(e.originalEvent)) check()
+    $('.welcome').on('click', (e) => {
+        if (expect && DeviceInput.canClick(e.originalEvent)) check()
     })
 
     window.addEventListener("keydown", keydown)
@@ -391,17 +391,17 @@ function developerApp(proceed){
 /**
  * Старт приложения
  */
-function startApp(){
-    if(window.appready) return
+function startApp() {
+    if (window.appready) return
 
     window.app_time_launch = Date.now()
-    window.app_time_end    = 0
+    window.app_time_end = 0
 
     //стартуем
 
     LoadingProgress.status('Launching the application')
 
-    Lampa.Listener.send('app',{type:'start'})
+    Lampa.Listener.send('app', { type: 'start' })
 
     //инициализируем классы
 
@@ -445,7 +445,7 @@ function startApp(){
 
     //добавляем источники поиска
 
-    if(window.lampa_settings.account_use && !window.lampa_settings.disable_features.ai) Search.addSource(Ai.discovery())
+    if (window.lampa_settings.account_use && !window.lampa_settings.disable_features.ai) Search.addSource(Ai.discovery())
 
     LoadingProgress.status('Initialization successful')
 
@@ -453,20 +453,20 @@ function startApp(){
 
     let ratio = window.devicePixelRatio || 1
 
-    console.log('App','screen size:', Math.round(window.innerWidth * ratio) + ' / ' + Math.round(window.innerHeight * ratio))
-    console.log('App','interface size:', window.innerWidth + ' / ' + window.innerHeight)
-    console.log('App','pixel ratio:', window.devicePixelRatio)
-    console.log('App','user agent:', navigator.userAgent)
-    console.log('App','is tv:', Platform.screen('tv'))
-    console.log('App','is mobile:', Platform.screen('mobile'))
-    console.log('App','is touch:', Utils.isTouchDevice())
-    console.log('App','is PWA:', Utils.isPWA())
-    console.log('App','platform:', Storage.get('platform', 'noname'))
-    console.log('App','version:', Manifest.app_version)
+    console.log('App', 'screen size:', Math.round(window.innerWidth * ratio) + ' / ' + Math.round(window.innerHeight * ratio))
+    console.log('App', 'interface size:', window.innerWidth + ' / ' + window.innerHeight)
+    console.log('App', 'pixel ratio:', window.devicePixelRatio)
+    console.log('App', 'user agent:', navigator.userAgent)
+    console.log('App', 'is tv:', Platform.screen('tv'))
+    console.log('App', 'is mobile:', Platform.screen('mobile'))
+    console.log('App', 'is touch:', Utils.isTouchDevice())
+    console.log('App', 'is PWA:', Utils.isPWA())
+    console.log('App', 'platform:', Storage.get('platform', 'noname'))
+    console.log('App', 'version:', Manifest.app_version)
 
     //записываем uid
 
-    if(!Storage.get('lampa_uid','')) Storage.set('lampa_uid', Utils.uid())
+    if (!Storage.get('lampa_uid', '')) Storage.set('lampa_uid', Utils.uid())
 
     //ренедрим лампу
 
@@ -476,17 +476,17 @@ function startApp(){
 
     //скрытие логотипа
 
-    setTimeout(()=>{
+    setTimeout(() => {
         LoadingProgress.destroy()
 
         Keypad.enable()
 
         Screensaver.enable()
 
-        $('.welcome').fadeOut(300,()=>{
+        $('.welcome').fadeOut(300, () => {
             $(this).remove()
         })
-    },300)
+    }, 300)
 
     //инициализируем остальные классы
 
@@ -512,54 +512,59 @@ function startApp(){
 
     window.app_time_end = Date.now()
 
-    Lampa.Listener.send('app',{type:'ready'})
+    Lampa.Listener.send('app', { type: 'ready' })
 }
 
 /**
  * Приоритетная загрузка
  */
-function loadTask(){
-    Task.queue((next)=>{
+function loadTask() {
+    Task.queue((next) => {
         LoadingProgress.step(2)
 
         Mirrors.task(next)
     })
 
-    Task.queue((next)=>{
+    Task.queue((next) => {
         LoadingProgress.step(3)
 
         VPN.task(next)
     })
 
-    Task.queue((next)=>{
+    Task.queue((next) => {
         LoadingProgress.step(4)
-        
+
         let completed = 0
-        let finish = () => {
-            completed++
-            if(completed === 2) {
-                LoadingProgress.step(5)
-                next()
+        let tasks = { plugins: false, account: false }
+        let finish = (taskName) => {
+            if (!tasks[taskName]) {
+                tasks[taskName] = true
+                completed++
+                if (completed === 2) {
+                    LoadingProgress.step(5)
+                    next()
+                }
             }
         }
-        Plugins.task(finish)
-        Account.task(finish)
+
+        Plugins.task(() => finish('plugins'))
+        Account.task(() => finish('account'))
     })
 
     // Дожидаемся фактической загрузки плагинов до старта приложения
-    Task.queue((next)=>{
+    Task.queue((next) => {
         LoadingProgress.status('Loading plugins')
-        Plugins.load(()=>{
+        Plugins.load(() => {
             LoadingProgress.status('Plugins loaded')
             next()
         })
     })
 
-    Task.secondary(()=>{
+    Task.secondary(() => {
         OtherLibs.init()
     })
 
-    Task.secondary(()=>{
+    Task.secondary(() => {
         startApp()
     })
 
@@ -569,28 +574,28 @@ function loadTask(){
 /**
  * Загрузка языка
  */
-function loadLang(){
+function loadLang() {
     let code = Storage.get('language', 'ru')
 
     LoadingProgress.step(1)
-    
-    if(['ru','en'].indexOf(code) >= 0) loadTask()
-    else{
+
+    if (['ru', 'en'].indexOf(code) >= 0) loadTask()
+    else {
         LoadingProgress.status('Loading language')
 
         $.ajax({
             url: (location.protocol == 'file:' || Platform.desktop() ? Manifest.github_lampa : './') + 'lang/' + code + '.js',
             dataType: 'text',
             timeout: 3000,
-            success: (data)=>{
-                try{
+            success: (data) => {
+                try {
                     let translate = {}
 
-                    eval((data + '').replace(/export default/g,'translate = ').trim())
+                    eval((data + '').replace(/export default/g, 'translate = ').trim())
 
                     Lang.AddTranslation(code, translate)
                 }
-                catch(e){}
+                catch (e) { }
 
                 loadTask()
             },
@@ -602,21 +607,21 @@ function loadLang(){
 /**
  * Первая загрузка приложения
  */
-function loadApp(){
+function loadApp() {
     prepareApp() //готовим приложение
 
     // Дожидаемся готовности Storage (резерв из Cache), затем принимаем решение по языку
-    Storage.ready().then(()=>{
+    Storage.ready().then(() => {
         //если язык уже установлен, то запускаем приложение
-        if(Storage.get('language') || !window.lampa_settings.lang_use){
+        if (Storage.get('language') || !window.lampa_settings.lang_use) {
             //но сперва ожидаем не вызвали ли пользователь меню разработчика, затем подгружаем язык
             developerApp(loadLang)
         }
-        else{
+        else {
             //иначе предлагаем выбрать язык
-            LangChoice.open((code)=>{
+            LangChoice.open((code) => {
                 Storage.set('language', code, true)
-                Storage.set('tmdb_lang',code, true)
+                Storage.set('tmdb_lang', code, true)
 
                 Keypad.disable()
 
@@ -628,16 +633,16 @@ function loadApp(){
     })
 }
 
-if(!window.fitst_load){
+if (!window.fitst_load) {
     window.fitst_load = true
 
     initClass()
-    
-    if(navigator.userAgent.toLowerCase().indexOf('lampa_client') > -1){
-        function checkReady(){
-            if(window.innerWidth > 0) loadApp()
-            else{
-                setTimeout(checkReady,100)
+
+    if (navigator.userAgent.toLowerCase().indexOf('lampa_client') > -1) {
+        function checkReady() {
+            if (window.innerWidth > 0) loadApp()
+            else {
+                setTimeout(checkReady, 100)
             }
         }
 

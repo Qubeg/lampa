@@ -22,8 +22,8 @@ import Platform from './platform'
 import Timeline from './account/timeline'
 
 let body
-let network   = new Reguest()
-let listener  = Subscribe()
+let network = new Reguest()
+let listener = Subscribe()
 let start_time = Date.now()
 let user_data
 
@@ -35,20 +35,20 @@ let notice_load = {
 let bookmarks = []
 
 
-function api(){
+function api() {
     return Utils.protocol() + Manifest.cub_domain + '/api/'
 }
 
 /**
  * Запуск
  */
-function init(){
-    if(!window.lampa_settings.account_use) return
+function init() {
+    if (!window.lampa_settings.account_use) return
 
-    Settings.listener.follow('open',(e)=>{
+    Settings.listener.follow('open', (e) => {
         body = null
 
-        if(e.name == 'account'){
+        if (e.name == 'account') {
             body = e.body
 
             renderPanel()
@@ -57,56 +57,56 @@ function init(){
         }
     })
 
-    Storage.listener.follow('change',(e)=>{
-        if(e.name == 'account_use') Timeline.update(true)
+    Storage.listener.follow('change', (e) => {
+        if (e.name == 'account_use') Timeline.update(true)
 
-        if(e.name == 'account'){
+        if (e.name == 'account') {
             Timeline.update(true)
 
             updateProfileIcon()
         }
 
-        if(e.name == 'cub_domain'){
+        if (e.name == 'cub_domain') {
             Noty.show(Lang.translate('account_reload_after'))
 
-            setTimeout(()=>{
+            setTimeout(() => {
                 window.location.reload()
             }, 5000)
         }
 
-        if(e.name == 'protocol'){
+        if (e.name == 'protocol') {
             updateProfileIcon()
 
             update()
         }
     })
 
-    Socket.listener.follow('open',checkValidAccount)
-    Socket.listener.follow('open',()=>{
-        if(Date.now() - start_time > 1000 * 60 * 5) Timeline.update(false, true)
+    Socket.listener.follow('open', checkValidAccount)
+    Socket.listener.follow('open', () => {
+        if (Date.now() - start_time > 1000 * 60 * 5) Timeline.update(false, true)
     })
 
-    Favorite.listener.follow('add,added',(e)=>{
+    Favorite.listener.follow('add,added', (e) => {
         save('add', e.where, e.card)
     })
 
-    Favorite.listener.follow('remove',(e)=>{
-        if(e.method == 'id') save('remove', e.where, e.card)
+    Favorite.listener.follow('remove', (e) => {
+        if (e.method == 'id') save('remove', e.where, e.card)
     })
 
-    Head.render().find('.head__body .open--profile').on('hover:enter',()=>{
+    Head.render().find('.head__body .open--profile').on('hover:enter', () => {
         showProfiles('head')
     })
 
-    network.silent(Utils.protocol() + 'tmdb.'+Manifest.cub_domain+'/blocked',(dmca)=>{
+    network.silent(Utils.protocol() + 'tmdb.' + Manifest.cub_domain + '/blocked', (dmca) => {
         window.lampa_settings.dmca = dmca
     })
 
     setInterval(checkValidAccount, 1000 * 60 * 10)
 
-    notice_load.data = Storage.get('account_notice','[]')
+    notice_load.data = Storage.get('account_notice', '[]')
 
-    checkProfile(()=>{
+    checkProfile(() => {
         getUser()
 
         Timeline.update()
@@ -116,45 +116,45 @@ function init(){
         persons()
     })
 
-    ParentalControl.add('account_profiles',{
+    ParentalControl.add('account_profiles', {
         title: 'account_profiles'
     })
 }
 
-function task(call){
-    if(!window.lampa_settings.account_use) return call()
+function task(call) {
+    if (!window.lampa_settings.account_use) return call()
 
-    let account = Storage.get('account','{}')
+    let account = Storage.get('account', '{}')
 
-    if(account.token && (!account.profile || !account.profile.id)){
-        checkProfile(()=>{
+    if (account.token && (!account.profile || !account.profile.id)) {
+        checkProfile(() => {
             update(call)
         })
     }
-    else{
+    else {
         update(call)
     }
 }
 
-function checkProfile(call){
-    let account = Storage.get('account','{}')
+function checkProfile(call) {
+    let account = Storage.get('account', '{}')
 
-    if(account.token && window.lampa_settings.account_use){
-        if(account.profile.id) call()
-        else{
-            network.silent(api() + 'profiles/all',(result)=>{
-                let main = result.profiles.find(p=>p.main)
+    if (account.token && window.lampa_settings.account_use) {
+        if (account.profile.id) call()
+        else {
+            network.silent(api() + 'profiles/all', (result) => {
+                let main = result.profiles.find(p => p.main)
 
-                if(main){
+                if (main) {
                     account.profile = main
 
                     Storage.set('account', account, true)
                 }
 
                 call()
-            },()=>{
-                setTimeout(checkProfile.bind(checkProfile,call),1000 * 60)
-            },false,{
+            }, () => {
+                setTimeout(checkProfile.bind(checkProfile, call), 1000 * 60)
+            }, false, {
                 headers: {
                     token: account.token
                 },
@@ -162,27 +162,27 @@ function checkProfile(call){
             })
         }
     }
-    else{
-        Storage.set('account_user','')
+    else {
+        Storage.set('account_user', '')
     }
 }
 
-function checkValidAccount(){
-    let account = Storage.get('account','{}')
+function checkValidAccount() {
+    let account = Storage.get('account', '{}')
 
-    if(account.token){
-        Socket.send('check_token',{})
+    if (account.token) {
+        Socket.send('check_token', {})
     }
 }
 
-function updateProfileIcon(){
-    let account = Storage.get('account','{}')
-    let button  = Head.render().find('.head__body .open--profile').toggleClass('hide', !Boolean(account.token))
+function updateProfileIcon() {
+    let account = Storage.get('account', '{}')
+    let button = Head.render().find('.head__body .open--profile').toggleClass('hide', !Boolean(account.token))
 
-    if(account.token){
+    if (account.token) {
         let img = button.find('img')[0]
 
-        img.onerror = ()=>{
+        img.onerror = () => {
             img.src = './img/img_load.svg'
         }
 
@@ -190,32 +190,32 @@ function updateProfileIcon(){
     }
 }
 
-function persons(secuses, error){
-    let account = Storage.get('account','{}')
+function persons(secuses, error) {
+    let account = Storage.get('account', '{}')
 
-    if(account.token && window.lampa_settings.account_use && !window.lampa_settings.disable_features.persons){
-        network.silent(api() + 'person/list',(data)=>{
-            Storage.set('person_subscribes_id',data.results.map(a=>a.person_id))
+    if (account.token && window.lampa_settings.account_use && !window.lampa_settings.disable_features.persons) {
+        network.silent(api() + 'person/list', (data) => {
+            Storage.set('person_subscribes_id', data.results.map(a => a.person_id))
 
-            if(secuses) secuses(data.results)
-        },error ? error : false,false,{
+            if (secuses) secuses(data.results)
+        }, error ? error : false, false, {
             headers: {
                 token: account.token
             }
         })
     }
-    else if(error) error()
+    else if (error) error()
 }
 
-function getUser(){
-    let account = Storage.get('account','{}')
+function getUser() {
+    let account = Storage.get('account', '{}')
 
-    if(account.token && window.lampa_settings.account_use){
-        network.silent(api() + 'users/get',(result)=>{
+    if (account.token && window.lampa_settings.account_use) {
+        network.silent(api() + 'users/get', (result) => {
             user_data = result.user
 
-            Storage.set('account_user',JSON.stringify(result.user))
-        },false,false,{
+            Storage.set('account_user', JSON.stringify(result.user))
+        }, false, false, {
             headers: {
                 token: account.token
             }
@@ -223,42 +223,42 @@ function getUser(){
     }
 }
 
-function checkPremium(){
-    let user = user_data || Storage.get('account_user','{}')
+function checkPremium() {
+    let user = user_data || Storage.get('account_user', '{}')
 
     return user.id ? Utils.countDays(Date.now(), user.premium) : 0
 }
 
 
-function save(method, type, card){
+function save(method, type, card) {
     let account = workingAccount()
 
-    if(account){
-        let find = bookmarks.find((elem)=>elem.card_id == card.id && elem.type == type)
+    if (account) {
+        let find = bookmarks.find((elem) => elem.card_id == card.id && elem.type == type)
 
         network.clear()
 
-        network.silent(api() + 'bookmarks/'+method, false, false,{
+        network.silent(api() + 'bookmarks/' + method, false, false, {
             type: type,
             data: JSON.stringify(Utils.clearCard(Arrays.clone(card))),
             card_id: card.id,
             id: find ? find.id : 0
-        },{
+        }, {
             headers: {
                 token: account.token,
                 profile: account.profile.id
             }
         })
 
-        if(method == 'remove'){
-            if(find){
+        if (method == 'remove') {
+            if (find) {
                 Arrays.remove(bookmarks, find)
-            } 
+            }
         }
-        else{
-            if(find) Arrays.remove(bookmarks, find)
-            
-            Arrays.insert(bookmarks,0,{
+        else {
+            if (find) Arrays.remove(bookmarks, find)
+
+            Arrays.insert(bookmarks, 0, {
                 id: find ? find.id : 0,
                 cid: find ? find.cid : account.id,
                 card_id: card.id,
@@ -268,29 +268,29 @@ function save(method, type, card){
                 time: Date.now()
             })
 
-            bookmarks.filter(elem=>elem.card_id == card.id).forEach((elem)=>{
+            bookmarks.filter(elem => elem.card_id == card.id).forEach((elem) => {
                 elem.time = Date.now()
             })
 
-            bookmarks.sort((a,b)=>b.time - a.time)
+            bookmarks.sort((a, b) => b.time - a.time)
         }
 
         updateChannels()
 
-        Socket.send('bookmarks',{})
+        Socket.send('bookmarks', {})
     }
 }
 
-function clear(where){
-    let account = Storage.get('account','{}')
+function clear(where) {
+    let account = Storage.get('account', '{}')
 
-    if(account.token && window.lampa_settings.account_use && window.lampa_settings.account_sync){
-        network.silent(api() + 'bookmarks/clear',(result)=>{
-            if(result.secuses) update()
-        },false,{
+    if (account.token && window.lampa_settings.account_use && window.lampa_settings.account_sync) {
+        network.silent(api() + 'bookmarks/clear', (result) => {
+            if (result.secuses) update()
+        }, false, {
             type: 'group',
             group: where
-        },{
+        }, {
             headers: {
                 token: account.token,
                 profile: account.profile.id
@@ -299,22 +299,22 @@ function clear(where){
     }
 }
 
-function update(call){
-    let account = Storage.get('account','{}')
+function update(call) {
+    let account = Storage.get('account', '{}')
 
-    if(account.token && window.lampa_settings.account_use && window.lampa_settings.account_sync){
-        network.silent(api() + 'bookmarks/all?full=1',(result)=>{
+    if (account.token && window.lampa_settings.account_use && window.lampa_settings.account_sync) {
+        network.silent(api() + 'bookmarks/all?full=1', (result) => {
             WebWorker.json({
                 type: 'parse',
                 data: result
-            },(e)=>{
-                updateBookmarks(e.data.bookmarks,()=>{
-                    if(call && typeof call == 'function') call()
+            }, (e) => {
+                updateBookmarks(e.data.bookmarks, () => {
+                    if (call && typeof call == 'function') call()
                 })
             })
-        },()=>{
-            if(call && typeof call == 'function') call()
-        },false,{
+        }, () => {
+            if (call && typeof call == 'function') call()
+        }, false, {
             dataType: 'text',
             timeout: 8000,
             headers: {
@@ -323,47 +323,47 @@ function update(call){
             }
         })
     }
-    else{
-        updateBookmarks([], ()=>{
-            if(call && typeof call == 'function') call()
+    else {
+        updateBookmarks([], () => {
+            if (call && typeof call == 'function') call()
         })
     }
 }
 
-function plugins(call){
-    let account = Storage.get('account','{}')
+function plugins(call) {
+    let account = Storage.get('account', '{}')
 
-    if(account.token && window.lampa_settings.account_use){
+    if (account.token && window.lampa_settings.account_use) {
         network.timeout(3000)
-        network.silent(api() + 'plugins/all',(result)=>{
-            if(result.secuses){
-                Storage.set('account_plugins',result.plugins)
+        network.silent(api() + 'plugins/all', (result) => {
+            if (result.secuses) {
+                Storage.set('account_plugins', result.plugins)
 
                 call(result.plugins)
             }
-            else{
-                call(Storage.get('account_plugins','[]'))
+            else {
+                call(Storage.get('account_plugins', '[]'))
             }
-        },()=>{
-            call(Storage.get('account_plugins','[]'))
-        },false,{
+        }, () => {
+            call(Storage.get('account_plugins', '[]'))
+        }, false, {
             headers: {
                 token: account.token,
                 profile: account.profile.id
             }
         })
     }
-    else{
+    else {
         call([])
     }
 }
 
-function extensions(call){
-    let account = Storage.get('account','{}')
+function extensions(call) {
+    let account = Storage.get('account', '{}')
 
     let headers = {}
 
-    if(account.token && window.lampa_settings.account_use){
+    if (account.token && window.lampa_settings.account_use) {
         headers = {
             headers: {
                 token: account.token,
@@ -371,11 +371,11 @@ function extensions(call){
             }
         }
     }
-    
+
     network.timeout(5000)
-    network.silent(api() + 'extensions/list',(result)=>{
-        if(result.secuses){
-            if(window.lampa_settings.white_use){
+    network.silent(api() + 'extensions/list', (result) => {
+        if (result.secuses) {
+            if (window.lampa_settings.white_use) {
                 let forbidden = [
                     9,
                     10,
@@ -389,31 +389,31 @@ function extensions(call){
                 ]
 
                 result.results.forEach(elem => {
-                    elem.results = elem.results.filter(plug=>forbidden.indexOf(plug.id) == -1)
+                    elem.results = elem.results.filter(plug => forbidden.indexOf(plug.id) == -1)
                 })
             }
 
-            Storage.set('account_extensions',result)
+            Storage.set('account_extensions', result)
 
             call(result)
         }
-        else{
-            call(Storage.get('account_extensions','{}'))
+        else {
+            call(Storage.get('account_extensions', '{}'))
         }
-    },()=>{
-        call(Storage.get('account_extensions','{}'))
-    },false,headers)
-    
+    }, () => {
+        call(Storage.get('account_extensions', '{}'))
+    }, false, headers)
+
 }
 
-function pluginsStatus(plugin, status){
-    let account = Storage.get('account','{}')
+function pluginsStatus(plugin, status) {
+    let account = Storage.get('account', '{}')
 
-    if(account.token && window.lampa_settings.account_use){
-        network.silent(api() + (plugin.author ? 'extensions' : 'plugins') + '/status',false,false,{
+    if (account.token && window.lampa_settings.account_use) {
+        network.silent(api() + (plugin.author ? 'extensions' : 'plugins') + '/status', false, false, {
             id: plugin.id,
             status: status
-        },{
+        }, {
             headers: {
                 token: account.token,
                 profile: account.profile.id
@@ -425,22 +425,22 @@ function pluginsStatus(plugin, status){
 /**
  * Статус
  */
-function renderStatus(name, value = ''){
-    if(body){
+function renderStatus(name, value = '') {
+    if (body) {
         body.find('.settings--account-status .settings-param__value').text(name)
         body.find('.settings--account-status .settings-param__descr').text(value)
     }
 }
 
-function addDevice(){
-    let displayModal = ()=>{
+function addDevice() {
+    let displayModal = () => {
         let html = Template.get('account_add_device')
 
-        Utils.imgLoad(html.find('img'), Utils.protocol() + Manifest.cub_domain+'/img/other/qr-add-device.png',()=>{
+        Utils.imgLoad(html.find('img'), Utils.protocol() + Manifest.cub_domain + '/img/other/qr-add-device.png', () => {
             html.addClass('loaded')
         })
 
-        html.find('.simple-button').on('hover:enter',()=>{
+        html.find('.simple-button').on('hover:enter', () => {
             Modal.close()
 
             Input.edit({
@@ -450,45 +450,45 @@ function addDevice(){
                 value: '',
                 layout: 'nums',
                 keyboard: 'lampa',
-            },(new_value)=>{
+            }, (new_value) => {
                 let code = parseInt(new_value)
 
-                if(new_value && new_value.length == 6 && !isNaN(code)){
-                    Loading.start(()=>{
+                if (new_value && new_value.length == 6 && !isNaN(code)) {
+                    Loading.start(() => {
                         network.clear()
-                
+
                         Loading.stop()
                     })
-                
+
                     network.clear()
 
-                    function login(error){
-                        network.silent(api() + 'device/add',(result)=>{
+                    function login(error) {
+                        network.silent(api() + 'device/add', (result) => {
                             Loading.stop()
-    
-                            Storage.set('account',result,true)
-                            Storage.set('account_email',result.email,true)
-                    
+
+                            Storage.set('account', result, true)
+                            Storage.set('account_email', result.email, true)
+
                             window.location.reload()
-                        },error,{
+                        }, error, {
                             code
                         })
                     }
-                
-                    login(()=>{
+
+                    login(() => {
                         localStorage.setItem('protocol', window.location.protocol == 'https:' ? 'https' : 'http')
 
-                        login((e)=>{
+                        login((e) => {
                             Loading.stop()
 
-                            Noty.show(Lang.translate(network.errorCode(e) == 200 ? 'account_code_error' : 'network_noconnect' ))
+                            Noty.show(Lang.translate(network.errorCode(e) == 200 ? 'account_code_error' : 'network_noconnect'))
                         })
                     })
                 }
-                else{
+                else {
                     displayModal()
 
-                    if(new_value) Noty.show(Lang.translate('account_code_wrong'))
+                    if (new_value) Noty.show(Lang.translate('account_code_wrong'))
                 }
             })
         })
@@ -497,92 +497,92 @@ function addDevice(){
             title: '',
             html: html,
             size: 'small',
-            onBack: ()=>{
+            onBack: () => {
                 Modal.close()
 
                 Controller.toggle('settings_component')
             }
         })
     }
-    
+
     displayModal()
 }
 
-function renderPanel(){
-    if(body){
-        let account = Storage.get('account','{}')
-        let signed  = account.token ? true : false
+function renderPanel() {
+    if (body) {
+        let account = Storage.get('account', '{}')
+        let signed = account.token ? true : false
 
-        if(!window.lampa_settings.account_sync){
+        if (!window.lampa_settings.account_sync) {
             body.find('[data-name="account_use"]').remove()
 
             body.find('.settings--account-status').nextAll().remove()
         }
-        
-        body.find('.settings--account-signin').toggleClass('hide',signed)
-        body.find('.settings--account-user').toggleClass('hide',!signed)
-        body.find('.settings--account-premium').toggleClass('selectbox-item--checked',Boolean(checkPremium()))
-        body.find('.settings-param__label').toggleClass('hide',!Boolean(checkPremium()))
 
-        if(!checkPremium()){
-            body.find('.selectbox-item').on('hover:enter',showCubPremium)
+        body.find('.settings--account-signin').toggleClass('hide', signed)
+        body.find('.settings--account-user').toggleClass('hide', !signed)
+        body.find('.settings--account-premium').toggleClass('selectbox-item--checked', Boolean(checkPremium()))
+        body.find('.settings-param__label').toggleClass('hide', !Boolean(checkPremium()))
+
+        if (!checkPremium()) {
+            body.find('.selectbox-item').on('hover:enter', showCubPremium)
         }
 
-        body.find('.settings--account-device-add').on('hover:enter',addDevice)
+        body.find('.settings--account-device-add').on('hover:enter', addDevice)
 
-        if(account.token){
+        if (account.token) {
             body.find('.settings--account-user-info .settings-param__value').text(account.email)
             body.find('.settings--account-user-profile .settings-param__value').text(account.profile.name)
 
-            body.find('.settings--account-user-out').on('hover:enter',()=>{
-                Storage.set('account','')
-                Storage.set('account_user','')
-                Storage.set('account_email','')
+            body.find('.settings--account-user-out').on('hover:enter', () => {
+                Storage.set('account', '')
+                Storage.set('account_user', '')
+                Storage.set('account_email', '')
 
                 Settings.update()
 
                 update()
             })
 
-            body.find('.settings--account-user-sync').on('hover:enter',()=>{
-                account = Storage.get('account','{}')
+            body.find('.settings--account-user-sync').on('hover:enter', () => {
+                account = Storage.get('account', '{}')
 
                 Select.show({
                     title: Lang.translate('settings_cub_sync'),
                     items: [
                         {
                             title: Lang.translate('confirm'),
-                            subtitle: Lang.translate('account_sync_to_profile') + ' ('+account.profile.name+')',
+                            subtitle: Lang.translate('account_sync_to_profile') + ' (' + account.profile.name + ')',
                             confirm: true
                         },
                         {
                             title: Lang.translate('cancel')
                         }
                     ],
-                    onSelect: (a)=>{
-                        if(a.confirm){
+                    onSelect: (a) => {
+                        if (a.confirm) {
                             let file
 
-                            try{
+                            try {
                                 file = new File([localStorage.getItem('favorite') || '{}'], "bookmarks.json", {
                                     type: "text/plain",
                                 })
                             }
-                            catch(e){}
+                            catch (e) { }
 
-                            if(!file){
-                                try{
-                                    file = new Blob([localStorage.getItem('favorite') || '{}'], {type: 'text/plain'})
+                            if (!file) {
+                                try {
+                                    file = new Blob([localStorage.getItem('favorite') || '{}'], { type: 'text/plain' })
                                     file.lastModifiedDate = new Date()
                                 }
-                                catch(e){
+                                catch (e) {
                                     Noty.show(Lang.translate('account_export_fail'))
                                 }
                             }
 
-                            if(file){
+                            if (file) {
                                 let formData = new FormData($('<form></form>')[0])
-                                    formData.append("file", file, "bookmarks.json")
+                                formData.append("file", file, "bookmarks.json")
 
                                 let loader = $('<div class="broadcast__scan" style="margin: 1em 0 0 0"><div></div></div>')
 
@@ -602,15 +602,15 @@ function renderPanel(){
                                         profile: account.profile.id
                                     },
                                     success: function (j) {
-                                        if(j.secuses){
+                                        if (j.secuses) {
                                             Noty.show(Lang.translate('account_sync_secuses'))
 
                                             update()
 
                                             loader.remove()
-                                        } 
+                                        }
                                     },
-                                    error: function(){
+                                    error: function () {
                                         Noty.show(Lang.translate('account_export_fail'))
 
                                         loader.remove()
@@ -621,13 +621,13 @@ function renderPanel(){
 
                         Controller.toggle('settings_component')
                     },
-                    onBack: ()=>{
+                    onBack: () => {
                         Controller.toggle('settings_component')
                     }
                 })
             })
 
-            body.find('.settings--account-user-backup').on('hover:enter',backup)
+            body.find('.settings--account-user-backup').on('hover:enter', backup)
 
             profile()
         }
@@ -635,21 +635,21 @@ function renderPanel(){
     }
 }
 
-function profile(){
-    let account = Storage.get('account','{}')
+function profile() {
+    let account = Storage.get('account', '{}')
 
     body.find('.settings--account-user-profile .settings-param__value').text(account.profile.name)
 
-    body.find('.settings--account-user-profile').on('hover:enter',()=>{
+    body.find('.settings--account-user-profile').on('hover:enter', () => {
         showProfiles('settings_component')
     })
 }
 
-function showProfiles(controller){
-    ParentalControl.personal('account_profiles',()=>{
-        let account = Storage.get('account','{}')
+function showProfiles(controller) {
+    ParentalControl.personal('account_profiles', () => {
+        let account = Storage.get('account', '{}')
 
-        Loading.start(()=>{
+        Loading.start(() => {
             network.clear()
 
             Loading.stop()
@@ -657,10 +657,10 @@ function showProfiles(controller){
 
         network.clear()
 
-        network.silent(api() + 'profiles/all',(result)=>{
+        network.silent(api() + 'profiles/all', (result) => {
             Loading.stop()
 
-            if(result.secuses){
+            if (result.secuses) {
                 let items = Arrays.clone(result.profiles)
                 let clone = Arrays.clone(result.profiles)
 
@@ -669,22 +669,22 @@ function showProfiles(controller){
 
                 Select.show({
                     title: Lang.translate('account_profiles'),
-                    items: items.map((elem, index)=>{
-                        elem.title    = elem.name
+                    items: items.map((elem, index) => {
+                        elem.title = elem.name
                         elem.template = 'selectbox_icon'
-                        elem.icon     = '<img src="' + Utils.protocol() + Manifest.cub_domain +'/img/profiles/'+elem.icon+'.png" />'
-                        elem.index    = index
+                        elem.icon = '<img src="' + Utils.protocol() + Manifest.cub_domain + '/img/profiles/' + elem.icon + '.png" />'
+                        elem.index = index
 
                         elem.selected = account.profile.id == elem.id
 
                         return elem
                     }),
-                    onSelect: (a)=>{
+                    onSelect: (a) => {
                         account.profile = clone[a.index]
 
-                        Storage.set('account',account)
+                        Storage.set('account', account)
 
-                        if(body) body.find('.settings--account-user-profile .settings-param__value').text(a.name)
+                        if (body) body.find('.settings--account-user-profile .settings-param__value').text(a.name)
 
                         notice_load.time = 0
 
@@ -692,80 +692,80 @@ function showProfiles(controller){
 
                         update()
                     },
-                    onBack: ()=>{
+                    onBack: () => {
                         Controller.toggle(controller)
                     }
                 })
             }
-            else{
+            else {
                 Noty.show(result.text)
             }
-        },()=>{
+        }, () => {
             Loading.stop()
-            
+
             Noty.show(Lang.translate('account_profiles_empty'))
-        },false,{
+        }, false, {
             headers: {
                 token: account.token
             }
         })
-    },false, true)
+    }, false, true)
 }
 
-function check(){
-    let account = Storage.get('account','{}')
+function check() {
+    let account = Storage.get('account', '{}')
 
-    if(account.token){
-        renderStatus(Lang.translate('account_authorized'),Lang.translate('account_logged_in') + ' ' + account.email)
+    if (account.token) {
+        renderStatus(Lang.translate('account_authorized'), Lang.translate('account_logged_in') + ' ' + account.email)
     }
-    else{
-        renderStatus(Lang.translate('account_login_failed'),Lang.translate('account_login_wait'))
+    else {
+        renderStatus(Lang.translate('account_login_failed'), Lang.translate('account_login_wait'))
     }
 }
 
-function working(){
-    return Storage.get('account','{}').token && Storage.field('account_use') && window.lampa_settings.account_use && window.lampa_settings.account_sync
+function working() {
+    return Storage.get('account', '{}').token && Storage.field('account_use') && window.lampa_settings.account_use && window.lampa_settings.account_sync
 }
 
-function canSync(logged_check){
-    return (logged_check ? logged() && window.lampa_settings.account_sync : working()) ? Storage.get('account','{}') : false
+function canSync(logged_check) {
+    return (logged_check ? logged() && window.lampa_settings.account_sync : working()) ? Storage.get('account', '{}') : false
 }
 
-function workingAccount(){
-    return working() ? Storage.get('account','{}') : false
+function workingAccount() {
+    return working() ? Storage.get('account', '{}') : false
 }
 
-function logged(){
-    return Storage.get('account','{}').token ? window.lampa_settings.account_use : false
+function logged() {
+    return Storage.get('account', '{}').token ? window.lampa_settings.account_use : false
 }
 
-function get(params){
-    return bookmarks.filter(elem=>elem.type == params.type).map((elem)=>{
+function get(params) {
+    return bookmarks.filter(elem => elem.type == params.type).map((elem) => {
         return elem.data
     })
 }
 
-function all(){
-    return bookmarks.map((elem)=>{
+function all() {
+    return bookmarks.map((elem) => {
         return elem.data
     })
 }
 
-function addDiscuss(params, call){
-    let account = Storage.get('account','{}')
+function addDiscuss(params, call) {
+    let account = Storage.get('account', '{}')
 
-    if(account.token){
-        network.silent(api() + 'discuss/add',(data)=>{
+    if (account.token) {
+        network.silent(api() + 'discuss/add', (data) => {
             data.result.icon = account.profile.icon
-            
+
             call(data.result)
-        },(j,e)=>{
-            Noty.show(network.errorJSON(j).text || Lang.translate('network_500'), {time: 5000})
-        },{
+        }, (j, e) => {
+            Noty.show(network.errorJSON(j).text || Lang.translate('network_500'), { time: 5000 })
+        }, {
             id: [params.method, params.id].join('_'),
             comment: params.comment,
             lang: Storage.field('language')
-        },{
+        }, {
             headers: {
                 token: account.token,
                 profile: account.profile.id
@@ -774,13 +774,13 @@ function addDiscuss(params, call){
     }
 }
 
-function voiteDiscuss(params, call){
-    let account = Storage.get('account','{}')
+function voiteDiscuss(params, call) {
+    let account = Storage.get('account', '{}')
 
-    if(account.token){
-        network.silent(api() + 'discuss/voite',call,(j,e)=>{
+    if (account.token) {
+        network.silent(api() + 'discuss/voite', call, (j, e) => {
             Noty.show(network.errorJSON(j).text || Lang.translate('network_500'))
-        },params,{
+        }, params, {
             headers: {
                 token: account.token,
                 profile: account.profile.id
@@ -789,56 +789,56 @@ function voiteDiscuss(params, call){
     }
 }
 
-function updateChannels(){
-    if(Platform.is('android') && typeof AndroidJS.saveBookmarks !== 'undefined' && bookmarks.length){
+function updateChannels() {
+    if (Platform.is('android') && typeof AndroidJS.saveBookmarks !== 'undefined' && bookmarks.length) {
         WebWorker.json({
             type: 'stringify',
             data: bookmarks
-        },(j)=>{
+        }, (j) => {
             AndroidJS.saveBookmarks(j.data)
         })
     }
 }
 
-function updateBookmarks(rows, call){
+function updateBookmarks(rows, call) {
     WebWorker.utils({
         type: 'account_bookmarks_parse',
         data: rows
-    },(e)=>{
+    }, (e) => {
         bookmarks = e.data
 
-        bookmarks.forEach((elem)=>{
+        bookmarks.forEach((elem) => {
             elem.data = Utils.clearCard(elem.data)
         })
 
         updateChannels()
 
-        if(call) call()
-        
-        listener.send('update_bookmarks',{rows, bookmarks})
+        if (call) call()
+
+        listener.send('update_bookmarks', { rows, bookmarks })
     })
 }
 
-function notice(call){
-    let account = Storage.get('account','{}')
+function notice(call) {
+    let account = Storage.get('account', '{}')
 
-    if(account.token && window.lampa_settings.account_use && window.lampa_settings.account_sync){
-        if(notice_load.time + 1000*60*10 < Date.now()){
+    if (account.token && window.lampa_settings.account_use && window.lampa_settings.account_sync) {
+        if (notice_load.time + 1000 * 60 * 10 < Date.now()) {
             network.timeout(5000)
 
-            network.silent(api() + 'notice/all',(result)=>{
-                if(result.secuses){
+            network.silent(api() + 'notice/all', (result) => {
+                if (result.secuses) {
                     notice_load.time = Date.now()
                     notice_load.data = result.notice
 
-                    Storage.set('account_notice',result.notice.map(n=>n))
+                    Storage.set('account_notice', result.notice.map(n => n))
 
                     call(result.notice)
                 }
                 else call(notice_load.data)
-            },()=>{
+            }, () => {
                 call(notice_load.data)
-            },false,{
+            }, false, {
                 headers: {
                     token: account.token,
                     profile: account.profile.id
@@ -850,10 +850,10 @@ function notice(call){
     else call([])
 }
 
-function backup(){
-    let account = Storage.get('account','{}')
+function backup() {
+    let account = Storage.get('account', '{}')
 
-    if(account.token){
+    if (account.token) {
         Select.show({
             title: Lang.translate('settings_cub_backup'),
             nomark: true,
@@ -873,8 +873,8 @@ function backup(){
                     title: Lang.translate('cancel')
                 }
             ],
-            onSelect: (a)=>{
-                if(a.export){
+            onSelect: (a) => {
+                if (a.export) {
                     Select.show({
                         title: Lang.translate('sure'),
                         nomark: true,
@@ -888,34 +888,34 @@ function backup(){
                                 title: Lang.translate('cancel')
                             }
                         ],
-                        onSelect: (a)=>{
-                            if(a.export){
+                        onSelect: (a) => {
+                            if (a.export) {
                                 let file
 
-                                try{
+                                try {
                                     file = new File([JSON.stringify(localStorage)], "backup.json", {
                                         type: "text/plain",
                                     })
                                 }
-                                catch(e){
+                                catch (e) {
                                     console.log('Backup', 'file create error', e.message)
                                 }
 
-                                if(!file){
-                                    try{
-                                        file = new Blob([JSON.stringify(localStorage)], {type: 'text/plain'})
+                                if (!file) {
+                                    try {
+                                        file = new Blob([JSON.stringify(localStorage)], { type: 'text/plain' })
                                         file.lastModifiedDate = new Date()
                                     }
-                                    catch(e){
+                                    catch (e) {
                                         console.log('Backup', 'file create error', e.message)
 
                                         Noty.show(Lang.translate('account_export_fail'))
                                     }
                                 }
 
-                                if(file){
+                                if (file) {
                                     var formData = new FormData($('<form></form>')[0])
-                                        formData.append("file", file, "backup.json")
+                                    formData.append("file", file, "backup.json")
 
                                     let loader = $('<div class="broadcast__scan" style="margin: 1em 0 0 0"><div></div></div>')
 
@@ -934,16 +934,16 @@ function backup(){
                                             token: account.token
                                         },
                                         success: function (j) {
-                                            if(j.secuses){
-                                                if(j.limited) showLimitedAccount()
+                                            if (j.secuses) {
+                                                if (j.limited) showLimitedAccount()
                                                 else Noty.show(Lang.translate('account_export_secuses'))
                                             }
                                             else Noty.show(Lang.translate('account_export_fail'))
 
                                             loader.remove()
                                         },
-                                        error: function(e,x){
-                                            console.log('Backup', 'network error', network.errorDecode(e,x))
+                                        error: function (e, x) {
+                                            console.log('Backup', 'network error', network.errorDecode(e, x))
 
                                             Noty.show(Lang.translate('account_export_fail_' + (network.errorJSON(e).code || 500)))
 
@@ -951,57 +951,57 @@ function backup(){
                                         }
                                     })
                                 }
-                                else{
+                                else {
                                     console.log('Backup', 'file not created')
                                 }
                             }
 
                             Controller.toggle('settings_component')
                         },
-                        onBack: ()=>{
+                        onBack: () => {
                             Controller.toggle('settings_component')
                         }
                     })
                 }
-                else if(a.import){
-                    network.silent(api() + 'users/backup/import',(data)=>{
-                        if(data.data){
-                            let imp  = 0
-                            let ers  = 0
-                            
+                else if (a.import) {
+                    network.silent(api() + 'users/backup/import', (data) => {
+                        if (data.data) {
+                            let imp = 0
+                            let ers = 0
+
                             // Сохраняем текущий действующий токен аккаунта
-                            let currentAccount = Storage.get('account','{}')
+                            let currentAccount = Storage.get('account', '{}')
                             let currentAccountToken = null
-                            if(currentAccount && currentAccount.token){
+                            if (currentAccount && currentAccount.token) {
                                 currentAccountToken = currentAccount
                             }
 
-                            for(let i in data.data){
-                                try{
+                            for (let i in data.data) {
+                                try {
                                     // Не перезаписываем токен аккаунта если он уже существует
-                                    if(i === 'account' && currentAccountToken){
+                                    if (i === 'account' && currentAccountToken) {
                                         continue
                                     }
-                                    
+
                                     localStorage.setItem(i, data.data[i])
 
                                     imp++
                                 }
-                                catch(e){
+                                catch (e) {
                                     ers++
                                 }
                             }
 
-                            Noty.show(Lang.translate('account_import_secuses') + ' - '+Lang.translate('account_imported')+' ('+imp+'/'+ers+') - ' + Lang.translate('account_reload_after'))
+                            Noty.show(Lang.translate('account_import_secuses') + ' - ' + Lang.translate('account_imported') + ' (' + imp + '/' + ers + ') - ' + Lang.translate('account_reload_after'))
 
-                            setTimeout(()=>{
+                            setTimeout(() => {
                                 window.location.reload()
-                            },5000)
+                            }, 5000)
                         }
                         else Noty.show(Lang.translate('nodata'))
-                    },()=>{
+                    }, () => {
                         Noty.show(Lang.translate('account_import_fail'))
-                    },false,{
+                    }, false, {
                         headers: {
                             token: account.token
                         }
@@ -1009,26 +1009,26 @@ function backup(){
 
                     Controller.toggle('settings_component')
                 }
-                else{
+                else {
                     Controller.toggle('settings_component')
                 }
             },
-            onBack: ()=>{
+            onBack: () => {
                 Controller.toggle('settings_component')
             }
         })
     }
 }
 
-function subscribes(params, secuses, error){
+function subscribes(params, secuses, error) {
     let account = canSync(true)
 
-    if(account){
-        network.silent(api() + 'notifications/all',(result)=>{
+    if (account) {
+        network.silent(api() + 'notifications/all', (result) => {
             secuses({
-                results: result.notifications.map(r=> Arrays.decodeJson(r.card,{}))
+                results: result.notifications.map(r => Arrays.decodeJson(r.card, {}))
             })
-        },error,false,{
+        }, error, false, {
             headers: {
                 token: account.token,
                 profile: account.profile.id
@@ -1038,13 +1038,13 @@ function subscribes(params, secuses, error){
     else error()
 }
 
-function showModal(template_name){
+function showModal(template_name) {
     let enabled = Controller.enabled().name
 
     Modal.open({
         title: '',
         html: Template.get(template_name),
-        onBack: ()=>{
+        onBack: () => {
             Modal.close()
 
             Controller.toggle(enabled)
@@ -1052,21 +1052,21 @@ function showModal(template_name){
     })
 }
 
-function showNoAccount(){
+function showNoAccount() {
     showModal('account')
 }
 
-function showLimitedAccount(){
+function showLimitedAccount() {
     showModal('account_limited')
 }
 
-function showCubPremium(){
+function showCubPremium() {
     let enabled = Controller.enabled().name
 
     Modal.open({
         title: '',
         html: Template.get('cub_premium'),
-        onBack: ()=>{
+        onBack: () => {
             Modal.close()
 
             Controller.toggle(enabled)
@@ -1076,41 +1076,41 @@ function showCubPremium(){
     Modal.render().addClass('modal--cub-premium').find('.modal__content').before('<div class="modal__icon"><svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 32 32"><path d="m2.837 20.977q-.912-5.931-1.825-11.862a.99.99 0 0 1 1.572-.942l5.686 4.264a1.358 1.358 0 0 0 1.945-.333l4.734-7.104a1.263 1.263 0 0 1 2.1 0l4.734 7.1a1.358 1.358 0 0 0 1.945.333l5.686-4.264a.99.99 0 0 1 1.572.942q-.913 5.931-1.825 11.862z" fill="#D8C39A"></svg></div>')
 }
 
-function subscribeToTranslation(params = {}, call, error){
+function subscribeToTranslation(params = {}, call, error) {
     let account = canSync(true)
 
-    if(account && params.voice){
+    if (account && params.voice) {
         network.timeout(5000)
 
-        network.silent(api() + 'notifications/add',(result)=>{
-            if(result.limited) showLimitedAccount()
-            else if(call) call()
-        },()=>{
-            if(error) error()
-        },{
+        network.silent(api() + 'notifications/add', (result) => {
+            if (result.limited) showLimitedAccount()
+            else if (call) call()
+        }, () => {
+            if (error) error()
+        }, {
             voice: params.voice,
             data: JSON.stringify(params.card),
             episode: params.episode,
             season: params.season
-        },{
+        }, {
             headers: {
                 token: account.token
             }
         })
     }
-    else if(error) error()
+    else if (error) error()
 }
 
-function logoff(data){
-    let account = Storage.get('account','{}')
+function logoff(data) {
+    let account = Storage.get('account', '{}')
 
-    if(account.token && account.email == data.email){
-        Storage.set('account','',true)
-        Storage.set('account_use',false,true)
-        Storage.set('account_user','',true)
-        Storage.set('account_email','',true)
-        Storage.set('account_notice','',true)
-        Storage.set('account_bookmarks','',true)
+    if (account.token && account.email == data.email) {
+        Storage.set('account', '', true)
+        Storage.set('account_use', false, true)
+        Storage.set('account_user', '', true)
+        Storage.set('account_email', '', true)
+        Storage.set('account_notice', '', true)
+        Storage.set('account_bookmarks', '', true)
 
         $('.head .open--profile').addClass('hide')
 
@@ -1118,21 +1118,21 @@ function logoff(data){
     }
 }
 
-function test(call){
-    let account = Storage.get('account','{}')
+function test(call) {
+    let account = Storage.get('account', '{}')
 
-    console.log('Account','start test')
+    console.log('Account', 'start test')
 
-    if(account.token && window.lampa_settings.account_use && window.lampa_settings.account_sync){
-        network.silent(api() + 'bookmarks/all?full=1',(result)=>{
+    if (account.token && window.lampa_settings.account_use && window.lampa_settings.account_sync) {
+        network.silent(api() + 'bookmarks/all?full=1', (result) => {
             console.log('Account', 'test bookmarks:', Utils.shortText(result, 300))
 
-            if(call) call()
-        },()=>{
+            if (call) call()
+        }, () => {
             console.log('Account', 'test bookmarks: error')
 
-            if(call) call()
-        },false,{
+            if (call) call()
+        }, false, {
             dataType: 'text',
             timeout: 8000,
             headers: {
@@ -1141,10 +1141,10 @@ function test(call){
             }
         })
     }
-    else{
+    else {
         console.log('Account', 'test bookmarks: no sync')
 
-        if(call) call()
+        if (call) call()
     }
 }
 
@@ -1172,20 +1172,20 @@ let Account = {
     showCubPremium,
     showLimitedAccount,
     logged,
-    removeStorage: ()=>{}, //устарело
+    removeStorage: () => { }, //устарело
     logoff,
     persons,
     addDiscuss,
     voiteDiscuss,
-    updateUser: ()=>{
+    updateUser: () => {
         getUser()
     },
     test
 }
 
 Object.defineProperty(Account, 'hasPremium', {
-    value: function() {
-       return checkPremium()
+    value: function () {
+        return checkPremium()
     },
     writable: false
 })
