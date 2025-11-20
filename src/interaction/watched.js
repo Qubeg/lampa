@@ -70,8 +70,17 @@ function buildSeasonCacheKey(tvId, season){
 function saveEpisodesToCache(cacheKey, episodes) {
     try {
         const seasonEpisodesCache = Storage.cache('season_episodes_cache', 1000, {})
+        
+        // Сохраняем только необходимые поля, чтобы не забивать LocalStorage
+        const minified = episodes.map(ep => ({
+            season_number: ep.season_number,
+            episode_number: ep.episode_number,
+            name: ep.name,
+            air_date: ep.air_date
+        }))
+
         seasonEpisodesCache[cacheKey] = {
-            episodes: episodes,
+            episodes: minified,
             cached_at: Date.now()
         }
         Storage.set('season_episodes_cache', seasonEpisodesCache)
@@ -97,6 +106,7 @@ function isCacheValid(cached, maxAge) {
  */
 function clearCache(tvId = null) {
     const seasonEpisodesCache = Storage.cache('season_episodes_cache', 1000, {})
+    const positionCache = Storage.cache('watched_position_cache', 5000, {})
     
     if (tvId === null) {
         Object.keys(seasonEpisodesCache).forEach(key => {
@@ -104,15 +114,18 @@ function clearCache(tvId = null) {
                 delete seasonEpisodesCache[key]
             }
         })
+        Object.keys(positionCache).forEach(key => delete positionCache[key])
     } else {
         Object.keys(seasonEpisodesCache).forEach(key => {
             if (key.startsWith(`season_episodes_${tvId}_`)) {
                 delete seasonEpisodesCache[key]
             }
         })
+        if(positionCache[tvId]) delete positionCache[tvId]
     }
     
     Storage.set('season_episodes_cache', seasonEpisodesCache)
+    Storage.set('watched_position_cache', positionCache)
     
     if (tvId !== null) {
         const metaCache = Storage.cache('tv_meta_cache', 500, {})
@@ -339,14 +352,16 @@ function getPlanMovie(data){
  * Проверяет эпизоды с конца, выполняя работу порциями между кадрами
  * @param {Array<{season_number:number,episode_count:number}>} seasons
  * @param {string} original_title
+ * @param {number} tvId
  * @param {AbortController} controller
  * @returns {Promise<{current:{season_number:number,episode_number:number}, view:object} | null>}
  */
-function scanLastViewed(seasons, original_title, controller){
+function scanLastViewed(seasons, original_title, tvId, controller){
     const BATCH = 200
 
     // читаем сводку прогресса напрямую, учитывая профиль
     const viewed = Storage.cache(Timeline.filename(), 10000, {})
+    const positionCache = Storage.cache('watched_position_cache', 5000, {})
 
     const getPercent = (season, episode) => {
         const h = hashEpisode(original_title, season, episode)
@@ -356,34 +371,119 @@ function scanLastViewed(seasons, original_title, controller){
         return 0
     }
 
-    let sIdx = seasons.length - 1
-    let eNum = sIdx >= 0 ? (seasons[sIdx].episode_count || 0) : 0
+    const savePosition = (season, episode) => {
+        positionCache[tvId] = { season, episode, time: Date.now() }
+        Storage.set('watched_position_cache', positionCache)
+    }
 
-    return new Promise((resolve, reject) => {
-        const step = () => {
-            if (controller.signal.aborted) return reject(new Error('Request aborted'))
+    // Оптимизация: Проверка кэшированной позиции
+    const cached = positionCache[tvId]
+    if (cached && cached.season && cached.episode) {
+        // Если кэшированный эпизод всё ещё просмотрен
+        if (getPercent(cached.season, cached.episode) > 0) {
+            return new Promise((resolve) => {
+                // Попробуем найти более новые просмотренные эпизоды (сканируем вперед)
+                let currentSeason = cached.season
+                let currentEpisode = cached.episode
+                let foundNewer = false
+                
+                // Находим индекс сезона в массиве seasons
+                let sIdx = seasons.findIndex(s => s.season_number === currentSeason)
+                
+                if (sIdx !== -1) {
+                    // Проверяем вперед
+                    // Ограничим проверку разумным числом (например, 100 эпизодов вперед), чтобы не зависнуть
+                    let checks = 0
+                    const MAX_FORWARD_CHECKS = 100 
+                    
+                    while(checks < MAX_FORWARD_CHECKS && sIdx < seasons.length){
+                        const seasonData = seasons[sIdx]
+                        const episodeCount = seasonData.episode_count || 0
+                        
+                        let nextSeason = currentSeason
+                        let nextEpisode = currentEpisode + 1
+                        let nextSIdx = sIdx
 
-            let processed = 0
-            while (processed < BATCH && sIdx >= 0) {
-                if (eNum < 1) {
-                    sIdx--
-                    eNum = sIdx >= 0 ? (seasons[sIdx].episode_count || 0) : 0
-                    continue
+                        if(nextEpisode > episodeCount){
+                            nextSIdx++
+                            if(nextSIdx < seasons.length){
+                                nextSeason = seasons[nextSIdx].season_number
+                                nextEpisode = 1
+                            } else {
+                                break
+                            }
+                        }
+                        
+                        if(getPercent(nextSeason, nextEpisode) > 0){
+                            currentSeason = nextSeason
+                            currentEpisode = nextEpisode
+                            sIdx = nextSIdx
+                            foundNewer = true
+                            checks++
+                        } else {
+                            break
+                        }
+                    }
+                    
+                    // Если мы прервали поиск из-за лимита, а не потому что кончились сезоны или нашли непросмотренный
+                    // То лучше перестраховаться и запустить полный скан
+                    if (checks >= MAX_FORWARD_CHECKS) {
+                        return runBackwardScan()
+                    }
+                    
+                    const h = hashEpisode(original_title, currentSeason, currentEpisode)
+                    const view = Timeline.view(h)
+                    
+                    if(foundNewer) savePosition(currentSeason, currentEpisode)
+                    
+                    resolve({ current: { season_number: currentSeason, episode_number: currentEpisode }, view })
+                } else {
+                    // Если сезон не найден (странно), сбрасываем на обычный поиск
+                    resolve(null) 
                 }
-                const seasonNum = seasons[sIdx].season_number
-                if (getPercent(seasonNum, eNum) > 0) {
-                    const h = hashEpisode(original_title, seasonNum, eNum)
-                    const v = Timeline.view(h)
-                    return resolve({ current: { season_number: seasonNum, episode_number: eNum }, view: v })
-                }
-                eNum--
-                processed++
-            }
-            if (sIdx < 0) return resolve(null)
-            requestAnimationFrame(step)
+            }).then(result => {
+                if(result) return result
+                // Если forward scan не сработал (например, сезон не найден), запускаем обычный
+                return runBackwardScan()
+            })
         }
-        requestAnimationFrame(step)
-    })
+    }
+
+    function runBackwardScan() {
+        let sIdx = seasons.length - 1
+        let eNum = sIdx >= 0 ? (seasons[sIdx].episode_count || 0) : 0
+
+        return new Promise((resolve, reject) => {
+            const step = () => {
+                if (controller.signal.aborted) return reject(new Error('Request aborted'))
+
+                let processed = 0
+                while (processed < BATCH && sIdx >= 0) {
+                    if (eNum < 1) {
+                        sIdx--
+                        eNum = sIdx >= 0 ? (seasons[sIdx].episode_count || 0) : 0
+                        continue
+                    }
+                    const seasonNum = seasons[sIdx].season_number
+                    if (getPercent(seasonNum, eNum) > 0) {
+                        const h = hashEpisode(original_title, seasonNum, eNum)
+                        const v = Timeline.view(h)
+                        
+                        savePosition(seasonNum, eNum)
+
+                        return resolve({ current: { season_number: seasonNum, episode_number: eNum }, view: v })
+                    }
+                    eNum--
+                    processed++
+                }
+                if (sIdx < 0) return resolve(null)
+                requestAnimationFrame(step)
+            }
+            requestAnimationFrame(step)
+        })
+    }
+
+    return runBackwardScan()
 }
 
 /**
@@ -429,7 +529,7 @@ function getPlanTv(data, options = {}){
             abortControllers.set(scanKey, controller)
 
             const pendingKey = (options.abortKey ? options.abortKey + ':' : '') + `scan_pending_${data.id}`
-            const doScan = pendingRequests.get(pendingKey) || scanLastViewed(seasons, data.original_title, controller)
+            const doScan = pendingRequests.get(pendingKey) || scanLastViewed(seasons, data.original_title, data.id, controller)
             pendingRequests.set(pendingKey, doScan)
 
             doScan.then(found => {
@@ -561,6 +661,34 @@ function render(plan, opts = {}){
         const { current, view, primaryList, missedList, lastOfAll, tvId } = plan
         const fragment = document.createDocumentFragment()
 
+        // Оптимизация: Синхронное чтение кэша для мгновенного отображения названий
+        const nameMap = new Map()
+        const episodeMap = new Map()
+        const seasonsToLoad = new Set()
+        
+        if(tvId){
+            const seasonEpisodesCache = Storage.cache('season_episodes_cache', 1000, {})
+            
+            const processSeason = (seasonNum) => {
+                if(!seasonNum) return
+                const cacheKey = buildSeasonCacheKey(tvId, seasonNum)
+                const cached = seasonEpisodesCache[cacheKey]
+                
+                if(cached && isCacheValid(cached, 24 * 60 * 60 * 1000)){
+                    cached.episodes.forEach(episode => {
+                        const key = `${seasonNum}x${episode.episode_number}`
+                        nameMap.set(key, episode.name)
+                        episodeMap.set(key, episode)
+                    })
+                } else {
+                    seasonsToLoad.add(seasonNum)
+                }
+            }
+
+            primaryList.forEach(e => processSeason(e.season_number))
+            missedList?.forEach(e => processSeason(e.season_number))
+        }
+
         if(missedList?.length){
             const missedLabel = missedList.map(missedEpisode => `S${missedEpisode.season_number||0}E${missedEpisode.episode_number||0}`).join(', ')
             fragment.appendChild(createItem(Lang.translate('missed_episodes') + ': ' + missedLabel, ['card-watched__missed']))
@@ -570,8 +698,28 @@ function render(plan, opts = {}){
         primaryList.forEach((episodeItem, episodeIndex) => {
             const badge = `S${episodeItem.season_number||0}E${episodeItem.episode_number||0}`
             const isFirst = (episodeItem.season_number === (current?.season_number) && episodeItem.episode_number === (current?.episode_number)) && episodeIndex === 0
-            const node = createItem(badge, [], options.withTimeline && isFirst, isFirst ? view : null)
-            nodes.push({ key: `${episodeItem.season_number}x${episodeItem.episode_number}`, node, badge })
+            
+            // Генерируем текст сразу, если данные есть в кэше
+            const key = `${episodeItem.season_number}x${episodeItem.episode_number}`
+            let text = badge
+            const episodeName = nameMap.get(key)
+            const episodeObj = episodeMap.get(key)
+            let isFuture = false
+
+            if(episodeObj && episodeObj.air_date){
+                const daysLeft = Utils.countDays(Date.now(), episodeObj.air_date)
+                if(daysLeft > 0){
+                    text = `${badge} / ${Lang.translate('full_episode_days_left')}: ${daysLeft}`
+                    isFuture = true
+                } else if (episodeName) {
+                    text = `${badge} - ${episodeName}`
+                }
+            } else if (episodeName) {
+                text = `${badge} - ${episodeName}`
+            }
+
+            const node = createItem(text, isFuture ? ['card-watched__item'] : [], options.withTimeline && isFirst, isFirst ? view : null)
+            nodes.push({ key, node, badge })
             fragment.appendChild(node)
         })
 
@@ -581,74 +729,60 @@ function render(plan, opts = {}){
 
         body.appendChild(fragment)
 
-        if(options.fetchNames && tvId){
+        if(options.fetchNames && tvId && seasonsToLoad.size > 0){
             if(options.abortKey) {
                 abortRequestsByPrefix(options.abortKey + '_names')
             }
             
-            // Собираем уникальные сезоны
-            const seasonsSet = new Set()
+            const seasonsArray = Array.from(seasonsToLoad)
             
-            primaryList.forEach(episodeData => {
-                if(episodeData.season_number) {
-                    seasonsSet.add(episodeData.season_number)
-                }
-            })
-            
-            missedList?.forEach(episodeData => {
-                if(episodeData.season_number) {
-                    seasonsSet.add(episodeData.season_number)
-                }
-            })
-            
-            const seasonsToLoad = Array.from(seasonsSet)
-            
-            if(seasonsToLoad.length){
-                Promise.allSettled(seasonsToLoad.map(season => fetchSeasonFromCache(tvId, season, { abortKey: options.abortKey })))
-                    .then((results) => {
-                        const nameMap = new Map()
-                        const episodeMap = new Map()
-                        
-                        results.forEach((result, index) => {
-                            if (result.status === 'fulfilled') {
-                                const episodes = result.value || []
-                                const seasonNumber = seasonsToLoad[index]
-                                
-                                episodes.forEach(episode => {
-                                    const key = `${seasonNumber}x${episode.episode_number}`
-                                    nameMap.set(key, episode.name)
-                                    episodeMap.set(key, episode)
-                                })
-                            }
-                        })
-                        
-                        nodes.forEach(node => {
-                            const episodeName = nameMap.get(node.key)
-                            const episodeObj = episodeMap.get(node.key)
-                            const span = node.node.querySelector('span')
-
-                            if(!span) return
-
-                            let futureText = ''
-                            if(episodeObj && episodeObj.air_date){
-                                const daysLeft = Utils.countDays(Date.now(), episodeObj.air_date)
-                                if(daysLeft > 0){
-                                    futureText = `${Lang.translate('full_episode_days_left')}: ${daysLeft}`
-                                    node.node.classList.add('card-watched__item')
-                                }
-                            }
-
-                            span.innerText = futureText 
-                                ? `${node.badge} / ${futureText}`
-                                : episodeName 
-                                    ? `${node.badge} - ${episodeName}` 
-                                    : node.badge
-                        })
+            Promise.allSettled(seasonsArray.map(season => fetchSeasonFromCache(tvId, season, { abortKey: options.abortKey })))
+                .then((results) => {
+                    const newNameMap = new Map()
+                    const newEpisodeMap = new Map()
+                    
+                    results.forEach((result, index) => {
+                        if (result.status === 'fulfilled') {
+                            const episodes = result.value || []
+                            const seasonNumber = seasonsArray[index]
+                            
+                            episodes.forEach(episode => {
+                                const key = `${seasonNumber}x${episode.episode_number}`
+                                newNameMap.set(key, episode.name)
+                                newEpisodeMap.set(key, episode)
+                            })
+                        }
                     })
-                    .catch(() => {
-                        // без изменений при ошибке
+                    
+                    nodes.forEach(node => {
+                        // Обновляем только если появились новые данные
+                        const episodeName = newNameMap.get(node.key)
+                        const episodeObj = newEpisodeMap.get(node.key)
+                        
+                        if(!episodeName && !episodeObj) return
+
+                        const span = node.node.querySelector('span')
+                        if(!span) return
+
+                        let futureText = ''
+                        if(episodeObj && episodeObj.air_date){
+                            const daysLeft = Utils.countDays(Date.now(), episodeObj.air_date)
+                            if(daysLeft > 0){
+                                futureText = `${Lang.translate('full_episode_days_left')}: ${daysLeft}`
+                                node.node.classList.add('card-watched__item')
+                            }
+                        }
+
+                        span.innerText = futureText 
+                            ? `${node.badge} / ${futureText}`
+                            : episodeName 
+                                ? `${node.badge} - ${episodeName}` 
+                                : node.badge
                     })
-            }
+                })
+                .catch(() => {
+                    // без изменений при ошибке
+                })
         }
     }
 
@@ -714,6 +848,19 @@ export default {
         })
         if (metaChanged) {
             Storage.set('tv_meta_cache', metaCache)
+        }
+
+        const positionCache = Storage.cache('watched_position_cache', 5000, {})
+        let positionChanged = false
+        Object.keys(positionCache).forEach(key => {
+            const item = positionCache[key]
+            if (item && item.time && (now - item.time) > maxAge) {
+                delete positionCache[key]
+                positionChanged = true
+            }
+        })
+        if (positionChanged) {
+            Storage.set('watched_position_cache', positionCache)
         }
         
         abortAllRequests()
