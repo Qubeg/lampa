@@ -122,17 +122,33 @@ function init() {
 }
 
 function task(call) {
-    if (!window.lampa_settings.account_use) return call()
+    if (!window.lampa_settings.account_use) {
+        console.log('Account', 'task: account_use disabled, skipping')
+        return call()
+    }
 
     let account = Storage.get('account', '{}')
 
     if (account.token && (!account.profile || !account.profile.id)) {
+        console.log('Account', 'task: token exists but profile missing, checking profile')
         checkProfile(() => {
-            update(call)
+            console.log('Account', 'task: profile loaded')
+            call()
+            update(() => {
+                console.log('Account', 'task: bookmarks synced in background')
+            })
+        })
+    }
+    else if (account.token) {
+        console.log('Account', 'task: token and profile exist')
+        call()
+        update(() => {
+            console.log('Account', 'task: bookmarks synced in background')
         })
     }
     else {
-        update(call)
+        console.log('Account', 'task: no token, skipping')
+        setTimeout(() => call(), 0)
     }
 }
 
@@ -140,30 +156,46 @@ function checkProfile(call) {
     let account = Storage.get('account', '{}')
 
     if (account.token && window.lampa_settings.account_use) {
-        if (account.profile.id) call()
+        if (account.profile && account.profile.id) {
+            console.log('Account', 'checkProfile: profile already exists')
+            call()
+        }
         else {
+            console.log('Account', 'checkProfile: fetching profiles')
             network.silent(api() + 'profiles/all', (result) => {
-                let main = result.profiles.find(p => p.main)
+                if (result && result.profiles && result.profiles.length > 0) {
+                    let main = result.profiles.find(p => p.main)
 
-                if (main) {
-                    account.profile = main
+                    if (main) {
+                        console.log('Account', 'checkProfile: found main profile')
+                        account.profile = main
 
-                    Storage.set('account', account, true)
+                        Storage.set('account', account, true)
+                    } else {
+                        console.log('Account', 'checkProfile: no main profile, using first')
+                        account.profile = result.profiles[0]
+                        Storage.set('account', account, true)
+                    }
+
+                    call()
+                } else {
+                    console.error('Account', 'checkProfile: invalid response')
+                    call()
                 }
-
+            }, (error) => {
+                console.error('Account', 'checkProfile: network error, will retry in 60s')
                 call()
-            }, () => {
-                setTimeout(checkProfile.bind(checkProfile, call), 1000 * 60)
             }, false, {
                 headers: {
                     token: account.token
                 },
-                timeout: 5000
+                timeout: 8000
             })
         }
     }
     else {
         Storage.set('account_user', '')
+        if (call) call()
     }
 }
 
@@ -303,20 +335,37 @@ function update(call) {
     let account = Storage.get('account', '{}')
 
     if (account.token && window.lampa_settings.account_use && window.lampa_settings.account_sync) {
+        if (!account.profile || !account.profile.id) {
+            console.log('Account', 'update: no profile, skipping bookmarks sync')
+            if (call && typeof call == 'function') call()
+            return
+        }
+
+        console.log('Account', 'update: syncing bookmarks')
         network.silent(api() + 'bookmarks/all?full=1', (result) => {
-            WebWorker.json({
-                type: 'parse',
-                data: result
-            }, (e) => {
-                updateBookmarks(e.data.bookmarks, () => {
+            try {
+                WebWorker.json({
+                    type: 'parse',
+                    data: result
+                }, (e) => {
+                    console.log('Account', 'update: bookmarks parsed successfully')
+                    updateBookmarks(e.data.bookmarks, () => {
+                        if (call && typeof call == 'function') call()
+                    })
+                }, (error) => {
+                    console.error('Account', 'update: worker parsing error', error)
                     if (call && typeof call == 'function') call()
                 })
-            })
-        }, () => {
+            } catch(e) {
+                console.error('Account', 'update: WebWorker error', e)
+                if (call && typeof call == 'function') call()
+            }
+        }, (error) => {
+            console.log('Account', 'update: network error, skipping bookmarks sync')
             if (call && typeof call == 'function') call()
         }, false, {
             dataType: 'text',
-            timeout: 8000,
+            timeout: 10000,
             headers: {
                 token: account.token,
                 profile: account.profile.id
@@ -324,6 +373,7 @@ function update(call) {
         })
     }
     else {
+        console.log('Account', 'update: no sync needed')
         updateBookmarks([], () => {
             if (call && typeof call == 'function') call()
         })
@@ -334,17 +384,27 @@ function plugins(call) {
     let account = Storage.get('account', '{}')
 
     if (account.token && window.lampa_settings.account_use) {
-        network.timeout(3000)
+        if (!account.profile || !account.profile.id) {
+            console.log('Account', 'plugins: no profile, using cached or empty list')
+            call(Storage.get('account_plugins', '[]'))
+            return
+        }
+
+        console.log('Account', 'plugins: fetching from server')
+        network.timeout(5000)
         network.silent(api() + 'plugins/all', (result) => {
             if (result.secuses) {
+                console.log('Account', 'plugins: received', result.plugins.length, 'plugins')
                 Storage.set('account_plugins', result.plugins)
 
                 call(result.plugins)
             }
             else {
+                console.log('Account', 'plugins: invalid response, using cached')
                 call(Storage.get('account_plugins', '[]'))
             }
-        }, () => {
+        }, (error) => {
+            console.log('Account', 'plugins: network error, using cached')
             call(Storage.get('account_plugins', '[]'))
         }, false, {
             headers: {
@@ -354,7 +414,8 @@ function plugins(call) {
         })
     }
     else {
-        call([])
+        console.log('Account', 'plugins: no token or account disabled')
+        setTimeout(() => call([]), 0)
     }
 }
 

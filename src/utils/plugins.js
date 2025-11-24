@@ -164,9 +164,16 @@ function addPluginParams(url) {
  * Загрузка всех плагинов
  */
 function load(call) {
+    if (!_awaits || _awaits.length === 0) {
+        console.log('Plugins', 'load: no plugins to load')
+        setTimeout(() => call(), 0)
+        return
+    }
+
     let errors = []
     let original = {}
     let include = []
+    let loadedCount = 0
 
     _awaits.forEach(url => {
         let encode = addPluginParams(url)
@@ -177,11 +184,15 @@ function load(call) {
     })
 
     if (!include.length) {
+        console.log('Plugins', 'load: include list is empty')
         call()
         return
     }
 
+    console.log('Plugins', 'load: starting to load', include.length, 'plugins')
+
     Utils.putScriptAsync(include, () => {
+        console.log('Plugins', 'load: completed. Loaded:', loadedCount, 'Errors:', errors.length, 'Total:', include.length)
         call()
 
         if (errors.length) {
@@ -190,17 +201,26 @@ function load(call) {
             }, 2000)
         }
     }, (u) => {
-        if (u.indexOf('modification.js') == -1) {
-            console.log('Plugins', 'error:', original[u])
-
-            errors.push(original[u])
-
-            _noload.push(original[u])
-
-            createPluginDB(original[u], u)
+        if (u.indexOf('modification.js') >= 0) {
+            console.log('Plugins', 'modification.js not found (optional)')
+            return
         }
+        
+        console.log('Plugins', 'error:', original[u])
+
+        errors.push(original[u])
+
+        _noload.push(original[u])
+
+        createPluginDB(original[u], u)
     }, (u) => {
-        console.log('Plugins', 'include:', original[u])
+        if (u.indexOf('modification.js') >= 0) {
+            console.log('Plugins', 'modification.js loaded (optional)')
+            return
+        }
+        
+        loadedCount++
+        console.log('Plugins', 'include:', original[u], '(' + loadedCount + '/' + (include.length - 1) + ')')
 
         _created.push(original[u])
 
@@ -209,11 +229,24 @@ function load(call) {
 }
 
 function task(call) {
+    console.log('Plugins', 'task: starting')
+    
     modify()
     _loaded = Storage.get('plugins', '[]')
 
+    if (_awaits && _awaits.length > 0) {
+        console.log('Plugins', 'task: already prepared, using cached list')
+        call()
+        return
+    }
+
     Account.plugins((plugins) => {
-        let puts = window.lampa_settings.plugins_use ? plugins.filter(plugin => plugin.status).map(plugin => plugin.url).concat(Storage.get('plugins', '[]').filter(plugin => plugin.status).map(plugin => plugin.url)) : []
+        console.log('Plugins', 'task: received', plugins.length, 'plugins from account')
+        
+        let puts = window.lampa_settings.plugins_use ? 
+            plugins.filter(plugin => plugin.status).map(plugin => plugin.url)
+                .concat(Storage.get('plugins', '[]').filter(plugin => plugin.status).map(plugin => plugin.url)) 
+            : []
 
         puts.push('./plugins/modification.js')
 
@@ -222,6 +255,8 @@ function task(call) {
         })
 
         _awaits = puts
+
+        console.log('Plugins', 'task: prepared', _awaits.length, 'plugins for loading')
 
         call()
     })

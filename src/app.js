@@ -392,13 +392,23 @@ function developerApp(proceed) {
  * Старт приложения
  */
 function startApp() {
-    if (window.appready) return
+    if (window.appready) {
+        console.warn('App', 'startApp: already ready, preventing double start')
+        return
+    }
 
+    if (window.app_starting) {
+        console.warn('App', 'startApp: already starting, preventing double start')
+        return
+    }
+
+    window.app_starting = true
     window.app_time_launch = Date.now()
     window.app_time_end = 0
 
     //стартуем
 
+    console.log('App', 'startApp: beginning application start')
     LoadingProgress.status('Launching the application')
 
     Lampa.Listener.send('app', { type: 'start' })
@@ -509,8 +519,11 @@ function startApp() {
     //лампа полностью готова
 
     window.appready = true
+    window.app_starting = false
 
     window.app_time_end = Date.now()
+
+    console.log('App', 'Application fully ready in', (window.app_time_end - window.app_time_launch), 'ms')
 
     Lampa.Listener.send('app', { type: 'ready' })
 }
@@ -519,56 +532,77 @@ function startApp() {
  * Приоритетная загрузка
  */
 function loadTask() {
-    Task.queue((next) => {
-        LoadingProgress.step(2)
+    Storage.ready().then(() => {
+        LoadingProgress.status('Storage ready, starting tasks')
 
-        Mirrors.task(next)
-    })
+        Task.queue((next) => {
+            LoadingProgress.step(2)
+            LoadingProgress.status('Checking mirrors and VPN')
 
-    Task.queue((next) => {
-        LoadingProgress.step(3)
-
-        VPN.task(next)
-    })
-
-    Task.queue((next) => {
-        LoadingProgress.step(4)
-
-        let completed = 0
-        let tasks = { plugins: false, account: false }
-        let finish = (taskName) => {
-            if (!tasks[taskName]) {
-                tasks[taskName] = true
+            let completed = 0
+            let total = 2
+            
+            let checkComplete = () => {
                 completed++
-                if (completed === 2) {
-                    LoadingProgress.step(5)
+                if (completed === total) {
+                    LoadingProgress.step(3)
+                    LoadingProgress.status('Network checks complete')
                     next()
                 }
             }
-        }
 
-        Plugins.task(() => finish('plugins'))
-        Account.task(() => finish('account'))
-    })
-
-    // Дожидаемся фактической загрузки плагинов до старта приложения
-    Task.queue((next) => {
-        LoadingProgress.status('Loading plugins')
-        Plugins.load(() => {
-            LoadingProgress.status('Plugins loaded')
-            next()
+            Mirrors.task(() => {
+                console.log('App', 'Mirrors check complete')
+                checkComplete()
+            })
+            
+            VPN.task(() => {
+                console.log('App', 'VPN check complete')
+                checkComplete()
+            })
         })
-    })
 
-    Task.secondary(() => {
-        OtherLibs.init()
-    })
+        Task.queue((next) => {
+            LoadingProgress.step(4)
+            LoadingProgress.status('Loading account data')
 
-    Task.secondary(() => {
-        startApp()
-    })
+            Account.task(() => {
+                LoadingProgress.status('Account loaded, preparing plugins')
 
-    Task.start()
+                Plugins.task(() => {
+                    LoadingProgress.status('Plugins list ready')
+                    LoadingProgress.step(5)
+                    next()
+                })
+            })
+        })
+
+        Task.queue((next) => {
+            LoadingProgress.status('Loading plugin scripts')
+
+            Plugins.load(() => {
+                LoadingProgress.status('All plugins loaded')
+                next()
+            })
+        })
+
+        Task.secondary(() => {
+            OtherLibs.init()
+        })
+
+        Task.secondary(() => {
+            startApp()
+        })
+
+        Task.start()
+    }).catch((error) => {
+        console.error('Storage initialization failed:', error)
+        LoadingProgress.status('Storage error, trying to continue')
+        
+        setTimeout(() => {
+            startApp()
+        }, 1000)
+    })
 }
 
 /**

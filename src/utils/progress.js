@@ -11,14 +11,38 @@ function Progress(){
     }
 
     this.start = function(complite){
-        works.forEach((fun,i)=>{
-            fun((data)=>{
-                result[i] = data
+        if(works.length === 0) {
+            console.log('Progress', 'no works to execute')
+            complite(result)
+            return
+        }
 
+        console.log('Progress', 'starting', works.length, 'secondary tasks')
+
+        works.forEach((fun,i)=>{
+            try {
+                fun((data)=>{
+                    result[i] = data
+
+                    loaded++
+
+                    console.log('Progress', 'task', i, 'completed (', loaded, '/', works.length, ')')
+
+                    if(loaded == works.length) {
+                        console.log('Progress', 'all tasks completed')
+                        complite(result)
+                    }
+                })
+            } catch(e) {
+                console.error('Progress', 'task', i, 'error:', e)
+                
                 loaded++
 
-                if(loaded == works.length) complite(result)
-            })
+                if(loaded == works.length) {
+                    console.log('Progress', 'all tasks completed (with errors)')
+                    complite(result)
+                }
+            }
         })
     }
 }

@@ -83,8 +83,14 @@ function check(protocol, mirror, call){
 }
 
 function task(call){
+    if(lastWorkingMirror === null) {
+        lastWorkingMirror = Storage.get('last_working_mirror', Manifest.cub_domain)
+        console.log('Mirrors', 'loaded cached mirror:', lastWorkingMirror)
+    }
+
     let protocols = ['https://', 'http://']
     let status = new Status(protocols.length)
+    let quickCheckSuccess = false
 
     connected = true
 
@@ -92,7 +98,7 @@ function task(call){
         let https = data['https://']
         let http  = data['http://']
 
-        console.log('Mirrors', 'any https:', https, 'http:', http)
+        console.log('Mirrors', 'task complete - https:', https, 'http:', http)
 
         if(Storage.field('protocol') == 'https' && !https.length){
             Storage.set('protocol', 'http', true)
@@ -107,7 +113,7 @@ function task(call){
         if(!connected) Markers.error('mirrors')
         else Markers.normal('mirrors')
         
-        if(call) call()
+        if(call && !quickCheckSuccess) call()
     }
 
     let checkTargets = []
@@ -124,11 +130,16 @@ function task(call){
     
     let tryNextTarget = () => {
         if(checkIndex >= checkTargets.length) {
+            console.log('Mirrors', 'quick check failed, starting full check in background')
             protocols.forEach((protocol)=>{
                 find(protocol, (mirrors)=>{
                     status.append(protocol, mirrors)
                 })
             })
+            if(call && !quickCheckSuccess) {
+                quickCheckSuccess = true
+                call()
+            }
             return
         }
 
@@ -139,19 +150,23 @@ function task(call){
             console.log('Mirrors', 'quick check:', target, 'status:', result)
 
             if(result){
+                quickCheckSuccess = true
                 lastWorkingMirror = target
                 Storage.set('last_working_mirror', target, true)
+                
+                console.log('Mirrors', 'quick check success')
                 if(call) call()
+                
+                protocols.forEach((protocol)=>{
+                    find(protocol, (mirrors)=>{
+                        status.append(protocol, mirrors)
+                    })
+                })
             }
             else{
                 tryNextTarget()
             }
         })
-    }
-
-    // Загружаем кэш при первом запуске
-    if(lastWorkingMirror === null) {
-        lastWorkingMirror = Storage.get('last_working_mirror', Manifest.cub_domain)
     }
 
     tryNextTarget()
