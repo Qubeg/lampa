@@ -270,10 +270,11 @@ function init(){
     /**
      * Выбор качества
      */
-    elems.quality.text('auto').on('hover:enter',()=>{
+    elems.quality.text('auto').data('quality','auto').on('hover:enter',()=>{
         if(qualitys){
             let qs = []
             let nw = elems.quality.text()
+            let current_quality = elems.quality.data('quality')
             
             if(Arrays.isArray(qualitys)){
                 qs = qualitys
@@ -288,7 +289,7 @@ function init(){
                         quality: i,
                         title: i + (lb ? '<sub>' + lb + '</sub>' : ''),
                         url: qu,
-                        selected: nw == Utils.qualityToText(i),
+                        selected: current_quality ? current_quality == i : nw == Utils.qualityToText(i),
                         call: typeof qa == 'object' ? qa.call : false,
                         instance: qa
                     })
@@ -307,7 +308,7 @@ function init(){
                         Controller.toggle(enabled)
 
                         a.call(a.instance, (url)=>{
-                            elems.quality.text(Utils.qualityToText(a.quality))
+                            elems.quality.text(Utils.qualityToText(a.quality)).data('quality',a.quality)
 
                             qs.forEach(q=>q.selected = false)
 
@@ -319,7 +320,7 @@ function init(){
                         })
                     }
                     else{
-                        elems.quality.text(Utils.qualityToText(a.quality))
+                        elems.quality.text(Utils.qualityToText(a.quality)).data('quality',a.quality)
 
                         qs.forEach(q=>q.selected = false)
 
@@ -1189,7 +1190,7 @@ function setLevels(levels, current){
     
     qualitys = levels
 
-    elems.quality.text(Utils.qualityToText(current))
+    elems.quality.text(Utils.qualityToText(current)).data('quality',current)
 }
 
 /**
@@ -1208,7 +1209,7 @@ function quality(qs, url){
             let qu = typeof qa == 'object' ? qa.url : typeof qa == 'string' ? qa : ''
 
             if(qu == url){
-                elems.quality.text(Utils.qualityToText(i))
+                elems.quality.text(Utils.qualityToText(i)).data('quality',i)
                 break
             }
         }
@@ -1268,7 +1269,7 @@ function destroy(){
     elems.time.text('00:00')
     elems.timenow.text('00:00')
     elems.timeend.text('00:00')
-    elems.quality.text('auto')
+    elems.quality.text('auto').data('quality','auto')
 
     elems.subs.toggleClass('hide',true)
     elems.tracks.toggleClass('hide',true)
