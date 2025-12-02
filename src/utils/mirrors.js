@@ -88,27 +88,35 @@ function task(call){
         console.log('Mirrors', 'loaded cached mirror:', lastWorkingMirror)
     }
 
-    let protocols = ['https://', 'http://']
+    // При HTTPS-сайте используем только HTTPS, чтобы избежать Mixed Content
+    let protocols = window.location.protocol == 'https:' ? ['https://'] : ['https://', 'http://']
     let status = new Status(protocols.length)
     let quickCheckSuccess = false
 
     connected = true
 
     status.onComplite = (data)=>{
-        let https = data['https://']
-        let http  = data['http://']
+        let https = data['https://'] || []
+        let http  = data['http://'] || []
 
         console.log('Mirrors', 'task complete - https:', https, 'http:', http)
 
-        if(Storage.field('protocol') == 'https' && !https.length){
-            Storage.set('protocol', 'http', true)
-
-            if(http.length) redirect(http[0])
+        // При HTTPS-сайте работаем только с HTTPS зеркалами
+        if(window.location.protocol == 'https:'){
+            if(https.length) redirect(https[0])
+            connected = https.length > 0
         }
-        else if(Storage.field('protocol') == 'https' && https.length) redirect(https[0])
-        else if(Storage.field('protocol') == 'http' && http.length) redirect(http[0])
+        else{
+            if(Storage.field('protocol') == 'https' && !https.length){
+                Storage.set('protocol', 'http', true)
 
-        if(!https.length && !http.length) connected = false
+                if(http.length) redirect(http[0])
+            }
+            else if(Storage.field('protocol') == 'https' && https.length) redirect(https[0])
+            else if(Storage.field('protocol') == 'http' && http.length) redirect(http[0])
+
+            connected = https.length > 0 || http.length > 0
+        }
 
         if(!connected) Markers.error('mirrors')
         else Markers.normal('mirrors')
@@ -173,7 +181,8 @@ function task(call){
 }
 
 function test(call){
-    let protocols = ['https://', 'http://']
+    // При HTTPS-сайте используем только HTTPS, чтобы избежать Mixed Content
+    let protocols = window.location.protocol == 'https:' ? ['https://'] : ['https://', 'http://']
 
     let status = new Status(protocols.length)
 
