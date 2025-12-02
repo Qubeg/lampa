@@ -41,6 +41,15 @@ jobs:
     - name: Build project
       run: npx gulp pack_github
 
+    - name: Create personal files
+      run: |
+        # personal.lampa
+        echo '{}' > build/github/lampa/personal.lampa
+        
+        # modification.js
+        mkdir -p build/github/lampa/plugins
+        echo '/* Lampa. modification plugin */' > build/github/lampa/plugins/modification.js
+
     - name: Verify build output
       run: |
         echo "Checking build output..."

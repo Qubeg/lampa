@@ -34,7 +34,7 @@ Object.defineProperty(object, 'old_mirrors', {
  */
 Object.defineProperty(object, 'cub_mirrors', { 
     get: ()=> {
-        let lampa = ['cub.red', 'durex.monster', 'cubnotrip.top']
+        let lampa = ['cub.rip', 'durex.monster', 'cubnotrip.top']
         let users = localStorage.getItem('cub_mirrors') || '[]'
 
         try {
