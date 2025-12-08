@@ -7,6 +7,22 @@ import Utils from '../utils/math'
 import Cache from '../utils/cache'
 import Storage from '../utils/storage'
 
+// Лимиты кэшей Storage.cache
+const CACHE_LIMIT_SEASON_EPISODES = 1000
+const CACHE_LIMIT_TV_META = 500
+const CACHE_LIMIT_WATCHED_POSITION = 5000
+const CACHE_LIMIT_TIMELINE = 10000
+
+// Время жизни кэшей (в миллисекундах)
+const CACHE_TTL_META = 30 * 24 * 60 * 60 * 1000      // 30 дней
+const CACHE_TTL_EPISODES = 24 * 60 * 60 * 1000       // 1 день
+const CACHE_TTL_CLEANUP = 7 * 24 * 60 * 60 * 1000    // 7 дней
+
+// Лимиты сканирования
+const SCAN_BATCH_SIZE = 200          // Эпизодов за итерацию backward scan
+const SCAN_MAX_FORWARD_CHECKS = 100  // Макс. эпизодов в forward scan
+const DISPLAY_MAX_MISSED = 3         // Макс. пропущенных эпизодов для показа
+
 // Кэш промисов для исключения параллельных запросов/задач с одинаковым ключом
 const pendingRequests = new Map()
 
@@ -31,7 +47,7 @@ function abortAllRequests() {
  * @returns {boolean}
  */
 function hasAnyTimelineData(){
-    const viewed = Storage.cache(Timeline.filename(), 10000, {})
+    const viewed = Storage.cache(Timeline.filename(), CACHE_LIMIT_TIMELINE, {})
     try {
         return Object.keys(viewed).length > 0
     } catch (e) {
@@ -57,6 +73,7 @@ function abortRequestsByPrefix(keyPrefix) {
  * Ключ для записи эпизодов сезона в Storage
  * @param {number|string} tvId
  * @param {number|string} season
+ * @returns {string}
  */
 function buildSeasonCacheKey(tvId, season){
     return `season_episodes_${tvId}_${season}`
@@ -69,7 +86,7 @@ function buildSeasonCacheKey(tvId, season){
  */
 function saveEpisodesToCache(cacheKey, episodes) {
     try {
-        const seasonEpisodesCache = Storage.cache('season_episodes_cache', 1000, {})
+        const seasonEpisodesCache = Storage.cache('season_episodes_cache', CACHE_LIMIT_SEASON_EPISODES, {})
         
         // Сохраняем только необходимые поля, чтобы не забивать LocalStorage
         const minified = episodes.map(ep => ({
@@ -91,8 +108,9 @@ function saveEpisodesToCache(cacheKey, episodes) {
 
 /**
  * Проверяет, не устарели ли кэшированные данные
- * @param {Object} cached
- * @param {number} maxAge
+ * @param {Object} cached - объект с полем cached_at
+ * @param {number} maxAge - максимальный возраст в миллисекундах
+ * @returns {boolean}
  */
 function isCacheValid(cached, maxAge) {
     if (!cached || !cached.cached_at) return false
@@ -105,8 +123,8 @@ function isCacheValid(cached, maxAge) {
  * @param {number|string} [tvId]
  */
 function clearCache(tvId = null) {
-    const seasonEpisodesCache = Storage.cache('season_episodes_cache', 1000, {})
-    const positionCache = Storage.cache('watched_position_cache', 5000, {})
+    const seasonEpisodesCache = Storage.cache('season_episodes_cache', CACHE_LIMIT_SEASON_EPISODES, {})
+    const positionCache = Storage.cache('watched_position_cache', CACHE_LIMIT_WATCHED_POSITION, {})
     
     if (tvId === null) {
         Object.keys(seasonEpisodesCache).forEach(key => {
@@ -128,7 +146,7 @@ function clearCache(tvId = null) {
     Storage.set('watched_position_cache', positionCache)
     
     if (tvId !== null) {
-        const metaCache = Storage.cache('tv_meta_cache', 500, {})
+        const metaCache = Storage.cache('tv_meta_cache', CACHE_LIMIT_TV_META, {})
         const metaKey = `tv_meta_${tvId}`
         if (metaCache[metaKey]) {
             delete metaCache[metaKey]
@@ -139,7 +157,9 @@ function clearCache(tvId = null) {
 
 /**
  * Возвращает метаданные сериала (seasons), используя Storage/IndexedDB и TMDB как источник
- * @param {Object} data
+ * @param {Object} data - карточка сериала с полем id
+ * @param {Object} [options={}] - опции
+ * @param {string} [options.abortKey] - ключ для отмены запроса
  * @returns {Promise<Object|null>}
  */
 function getShowMetaFromCache(data, options = {}) {
@@ -162,14 +182,14 @@ function getShowMetaFromCache(data, options = {}) {
                 throw new Error('Request aborted')
             }
             
-            const metaCache = Storage.cache('tv_meta_cache', 500, {})
+            const metaCache = Storage.cache('tv_meta_cache', CACHE_LIMIT_TV_META, {})
             
-            if (metaCache[cacheKey] && isCacheValid(metaCache[cacheKey], 30 * 24 * 60 * 60 * 1000)) {
+            if (metaCache[cacheKey] && isCacheValid(metaCache[cacheKey], CACHE_TTL_META)) {
                 return metaCache[cacheKey]
             }
             
             const cached = await Cache.getData('tv_meta', data.id).catch(() => null)
-            if (cached && isCacheValid(cached, 30 * 24 * 60 * 60 * 1000)) {
+            if (cached && isCacheValid(cached, CACHE_TTL_META)) {
                 metaCache[cacheKey] = cached
                 Storage.set('tv_meta_cache', metaCache)
                 return cached
@@ -179,7 +199,7 @@ function getShowMetaFromCache(data, options = {}) {
                 throw new Error('Request aborted')
             }
             
-            // Если локально нет метаданных и нет никаких записей таймлайна — пропускаем сетевой запрос
+            // Если локально нет метаданных и нет никаких записей таймлайна - пропускаем сетевой запрос
             if (!hasAnyTimelineData()) {
                 return null
             }
@@ -229,9 +249,11 @@ function getShowMetaFromCache(data, options = {}) {
 }
 
 /**
- * Возвращает список эпизодов сезона из Storage/IndexedDB, при отсутствии — из TMDB
+ * Возвращает список эпизодов сезона из Storage/IndexedDB, при отсутствии - из TMDB
  * @param {number|string} tvId
  * @param {number|string} season
+ * @param {Object} [options={}] - опции
+ * @param {string} [options.abortKey] - ключ для отмены запроса
  * @returns {Promise<Array>}
  */
 function fetchSeasonFromCache(tvId, season, options = {}){
@@ -252,8 +274,8 @@ function fetchSeasonFromCache(tvId, season, options = {}){
                 throw new Error('Request aborted')
             }
             
-            const seasonEpisodesCache = Storage.cache('season_episodes_cache', 1000, {})
-            if (seasonEpisodesCache[cacheKey] && isCacheValid(seasonEpisodesCache[cacheKey], 24 * 60 * 60 * 1000)) {
+            const seasonEpisodesCache = Storage.cache('season_episodes_cache', CACHE_LIMIT_SEASON_EPISODES, {})
+            if (seasonEpisodesCache[cacheKey] && isCacheValid(seasonEpisodesCache[cacheKey], CACHE_TTL_EPISODES)) {
                 return seasonEpisodesCache[cacheKey].episodes
             }
 
@@ -316,6 +338,7 @@ function fetchSeasonFromCache(tvId, season, options = {}){
  * @param {string} original_title
  * @param {number} season
  * @param {number} episode
+ * @returns {string}
  */
 function hashEpisode(original_title, season, episode){
     // Валидация входных данных
@@ -357,11 +380,9 @@ function getPlanMovie(data){
  * @returns {Promise<{current:{season_number:number,episode_number:number}, view:object} | null>}
  */
 function scanLastViewed(seasons, original_title, tvId, controller){
-    const BATCH = 200
-
-    // читаем сводку прогресса напрямую, учитывая профиль
-    const viewed = Storage.cache(Timeline.filename(), 10000, {})
-    const positionCache = Storage.cache('watched_position_cache', 5000, {})
+    // Читаем сводку прогресса напрямую, учитывая профиль
+    const viewed = Storage.cache(Timeline.filename(), CACHE_LIMIT_TIMELINE, {})
+    const positionCache = Storage.cache('watched_position_cache', CACHE_LIMIT_WATCHED_POSITION, {})
 
     const getPercent = (season, episode) => {
         const h = hashEpisode(original_title, season, episode)
@@ -376,7 +397,7 @@ function scanLastViewed(seasons, original_title, tvId, controller){
         Storage.set('watched_position_cache', positionCache)
     }
 
-    // Оптимизация: Проверка кэшированной позиции
+    // Проверка кэшированной позиции
     const cached = positionCache[tvId]
     if (cached && cached.season && cached.episode) {
         // Если кэшированный эпизод всё ещё просмотрен
@@ -392,12 +413,12 @@ function scanLastViewed(seasons, original_title, tvId, controller){
                 
                 if (sIdx !== -1) {
                     // Проверяем вперед
-                    // Ограничим проверку разумным числом (например, 100 эпизодов вперед), чтобы не зависнуть
                     let checks = 0
-                    const MAX_FORWARD_CHECKS = 100 
                     
-                    while(checks < MAX_FORWARD_CHECKS && sIdx < seasons.length){
+                    while(checks < SCAN_MAX_FORWARD_CHECKS && sIdx < seasons.length){
                         const seasonData = seasons[sIdx]
+                        if(!seasonData) break
+                        
                         const episodeCount = seasonData.episode_count || 0
                         
                         let nextSeason = currentSeason
@@ -406,7 +427,7 @@ function scanLastViewed(seasons, original_title, tvId, controller){
 
                         if(nextEpisode > episodeCount){
                             nextSIdx++
-                            if(nextSIdx < seasons.length){
+                            if(nextSIdx < seasons.length && seasons[nextSIdx]){
                                 nextSeason = seasons[nextSIdx].season_number
                                 nextEpisode = 1
                             } else {
@@ -426,8 +447,8 @@ function scanLastViewed(seasons, original_title, tvId, controller){
                     }
                     
                     // Если мы прервали поиск из-за лимита, а не потому что кончились сезоны или нашли непросмотренный
-                    // То лучше перестраховаться и запустить полный скан
-                    if (checks >= MAX_FORWARD_CHECKS) {
+                    // То запустить полный скан
+                    if (checks >= SCAN_MAX_FORWARD_CHECKS) {
                         return runBackwardScan()
                     }
                     
@@ -458,7 +479,7 @@ function scanLastViewed(seasons, original_title, tvId, controller){
                 if (controller.signal.aborted) return reject(new Error('Request aborted'))
 
                 let processed = 0
-                while (processed < BATCH && sIdx >= 0) {
+                while (processed < SCAN_BATCH_SIZE && sIdx >= 0) {
                     if (eNum < 1) {
                         sIdx--
                         eNum = sIdx >= 0 ? (seasons[sIdx].episode_count || 0) : 0
@@ -488,12 +509,14 @@ function scanLastViewed(seasons, original_title, tvId, controller){
 
 /**
  * План просмотра для сериала
- * @param {Object} data
+ * @param {Object} data - карточка сериала
+ * @param {Object} [options={}] - опции
+ * @param {string} [options.abortKey] - ключ для отмены запроса
  * @returns {Promise<Object|null>}
  */
 function getPlanTv(data, options = {}){
     return new Promise(resolve => {
-    // если есть ключ отмены фокуса, отменяем старые операции по этому ключу
+    // Если есть ключ отмены фокуса, отменяем старые операции по этому ключу
     if (options.abortKey) abortRequestsByPrefix(options.abortKey + ':')
 
     getShowMetaFromCache(data, { abortKey: options.abortKey }).then(tvShowData => {
@@ -544,9 +567,8 @@ function getPlanTv(data, options = {}){
 
                 // Ищем пропущенные эпизоды во всех предыдущих сезонах и в текущем сезоне до текущего эпизода
                 const missedList = []
-                const MAX_MISSED = 3
                 // Читаем сводку прогресса один раз, чтобы не дёргать Timeline.view в цикле
-                const viewedMap = Storage.cache(Timeline.filename(), 10000, {})
+                const viewedMap = Storage.cache(Timeline.filename(), CACHE_LIMIT_TIMELINE, {})
                 const getPercent = (season, episode) => {
                     const h = hashEpisode(data.original_title, season, episode)
                     const v = viewedMap[h]
@@ -556,17 +578,17 @@ function getPlanTv(data, options = {}){
                 }
 
                 // Сканируем сезоны по возрастанию до текущего
-                for (let i = 0; i < seasons.length && missedList.length < MAX_MISSED; i++) {
+                for (let i = 0; i < seasons.length && missedList.length < DISPLAY_MAX_MISSED; i++) {
                     const seasonInfo = seasons[i]
                     const sNum = seasonInfo.season_number
-                    // Для текущего сезона — только до текущего эпизода (не включая его)
+                    // Для текущего сезона - только до текущего эпизода (не включая его)
                     const lastEpisodeToCheck = sNum === curSeason
                         ? Math.max(1, curEpisode - 1)
                         : (seasonInfo.episode_count || 0)
 
                     if (sNum > curSeason || lastEpisodeToCheck < 1) continue
 
-                    for (let eNum = 1; eNum <= lastEpisodeToCheck && missedList.length < MAX_MISSED; eNum++) {
+                    for (let eNum = 1; eNum <= lastEpisodeToCheck && missedList.length < DISPLAY_MAX_MISSED; eNum++) {
                         const percent = getPercent(sNum, eNum)
                         if (percent === 0) {
                             missedList.push({ season_number: sNum, episode_number: eNum })
@@ -610,7 +632,9 @@ function getPlanTv(data, options = {}){
 
 /**
  * Универсальный план просмотра для карточки (фильм или сериал)
- * @param {Object|null} data
+ * @param {Object|null} data - карточка
+ * @param {Object} [options={}] - опции
+ * @param {string} [options.abortKey] - ключ для отмены запроса
  * @returns {Promise<Object|null>}
  */
 function getPlan(data, options = {}){
@@ -644,9 +668,37 @@ function createItem(text, classes = [], showTimeline = false, timeline = null){
 }
 
 /**
+ * Форматирует текст для отображения эпизода
+ * @param {string} badge - Бейдж эпизода (например, "S1E5")
+ * @param {string|null} episodeName - Название эпизода
+ * @param {Object|null} episodeObj - Объект эпизода с air_date
+ * @returns {{text: string}}
+ */
+function formatEpisodeText(badge, episodeName, episodeObj) {
+    if (episodeObj && episodeObj.air_date) {
+        const daysLeft = Utils.countDays(Date.now(), episodeObj.air_date)
+        if (daysLeft > 0) {
+            return { text: `${badge} / ${Lang.translate('full_episode_days_left')}: ${daysLeft}` }
+        }
+    }
+    
+    if (episodeName) {
+        return { text: `${badge} - ${episodeName}` }
+    }
+    
+    return { text: badge }
+}
+
+/**
  * Узел с планом просмотра для карточки
- * @param {Object|null} plan
- * @param {Object} [opts={}]
+ * @param {Object|null} plan - план просмотра от getPlan
+ * @param {Object} [opts={}] - опции рендеринга
+ * @param {boolean} [opts.withTimeline=true] - показывать таймлайн
+ * @param {boolean} [opts.fetchNames=true] - загружать названия эпизодов
+ * @param {HTMLElement|null} [opts.mount=null] - контейнер для вставки
+ * @param {string} [opts.position='prepend'] - позиция вставки ('prepend'|'append')
+ * @param {string} [opts.abortKey] - ключ для отмены запросов
+ * @returns {HTMLElement|null}
  */
 function render(plan, opts = {}){
     if(!plan) return null
@@ -661,20 +713,20 @@ function render(plan, opts = {}){
         const { current, view, primaryList, missedList, lastOfAll, tvId } = plan
         const fragment = document.createDocumentFragment()
 
-        // Оптимизация: Синхронное чтение кэша для мгновенного отображения названий
+        // Синхронное чтение кэша
         const nameMap = new Map()
         const episodeMap = new Map()
         const seasonsToLoad = new Set()
         
         if(tvId){
-            const seasonEpisodesCache = Storage.cache('season_episodes_cache', 1000, {})
+            const seasonEpisodesCache = Storage.cache('season_episodes_cache', CACHE_LIMIT_SEASON_EPISODES, {})
             
             const processSeason = (seasonNum) => {
                 if(!seasonNum) return
                 const cacheKey = buildSeasonCacheKey(tvId, seasonNum)
                 const cached = seasonEpisodesCache[cacheKey]
                 
-                if(cached && isCacheValid(cached, 24 * 60 * 60 * 1000)){
+                if(cached && isCacheValid(cached, CACHE_TTL_EPISODES)){
                     cached.episodes.forEach(episode => {
                         const key = `${seasonNum}x${episode.episode_number}`
                         nameMap.set(key, episode.name)
@@ -701,24 +753,12 @@ function render(plan, opts = {}){
             
             // Генерируем текст сразу, если данные есть в кэше
             const key = `${episodeItem.season_number}x${episodeItem.episode_number}`
-            let text = badge
             const episodeName = nameMap.get(key)
             const episodeObj = episodeMap.get(key)
-            let isFuture = false
+            
+            const { text } = formatEpisodeText(badge, episodeName, episodeObj)
 
-            if(episodeObj && episodeObj.air_date){
-                const daysLeft = Utils.countDays(Date.now(), episodeObj.air_date)
-                if(daysLeft > 0){
-                    text = `${badge} / ${Lang.translate('full_episode_days_left')}: ${daysLeft}`
-                    isFuture = true
-                } else if (episodeName) {
-                    text = `${badge} - ${episodeName}`
-                }
-            } else if (episodeName) {
-                text = `${badge} - ${episodeName}`
-            }
-
-            const node = createItem(text, isFuture ? ['card-watched__item'] : [], options.withTimeline && isFirst, isFirst ? view : null)
+            const node = createItem(text, [], options.withTimeline && isFirst, isFirst ? view : null)
             nodes.push({ key, node, badge })
             fragment.appendChild(node)
         })
@@ -764,20 +804,9 @@ function render(plan, opts = {}){
                         const span = node.node.querySelector('span')
                         if(!span) return
 
-                        let futureText = ''
-                        if(episodeObj && episodeObj.air_date){
-                            const daysLeft = Utils.countDays(Date.now(), episodeObj.air_date)
-                            if(daysLeft > 0){
-                                futureText = `${Lang.translate('full_episode_days_left')}: ${daysLeft}`
-                                node.node.classList.add('card-watched__item')
-                            }
-                        }
-
-                        span.innerText = futureText 
-                            ? `${node.badge} / ${futureText}`
-                            : episodeName 
-                                ? `${node.badge} - ${episodeName}` 
-                                : node.badge
+                        const { text } = formatEpisodeText(node.badge, episodeName, episodeObj)
+                        
+                        span.innerText = text
                     })
                 })
                 .catch(() => {
@@ -796,12 +825,13 @@ function render(plan, opts = {}){
 
 /**
  * Получает план и сразу рендерит его в контейнер
- * @param {Object|null} data
- * @param {HTMLElement} mount
- * @param {Object} [opts={}]
+ * @param {Object|null} data - карточка
+ * @param {HTMLElement} mount - контейнер для вставки
+ * @param {Object} [opts={}] - опции (передаются в render)
+ * @returns {Promise<HTMLElement|null>}
  */
 function attach(data, mount, opts = {}){
-    return getPlan(data).then(plan => {
+    return getPlan(data, { abortKey: opts.abortKey }).then(plan => {
         if(!plan) return null
         return render(plan, Object.assign({}, opts, { mount }))
     })
@@ -819,12 +849,12 @@ export default {
     
     /**
     * Удаляет устаревшие записи из локальных кэшей и прерывает активные операции
-    * @param {number} [maxAge=7*24*60*60*1000]
+    * @param {number} [maxAge=CACHE_TTL_CLEANUP]
      */
-    cleanupOldCache(maxAge = 7 * 24 * 60 * 60 * 1000) {
+    cleanupOldCache(maxAge = CACHE_TTL_CLEANUP) {
         const now = Date.now()
         
-        const seasonCache = Storage.cache('season_episodes_cache', 1000, {})
+        const seasonCache = Storage.cache('season_episodes_cache', CACHE_LIMIT_SEASON_EPISODES, {})
         let seasonChanged = false
         Object.keys(seasonCache).forEach(key => {
             const item = seasonCache[key]
@@ -837,7 +867,7 @@ export default {
             Storage.set('season_episodes_cache', seasonCache)
         }
         
-        const metaCache = Storage.cache('tv_meta_cache', 500, {})
+        const metaCache = Storage.cache('tv_meta_cache', CACHE_LIMIT_TV_META, {})
         let metaChanged = false
         Object.keys(metaCache).forEach(key => {
             const item = metaCache[key]
@@ -850,7 +880,7 @@ export default {
             Storage.set('tv_meta_cache', metaCache)
         }
 
-        const positionCache = Storage.cache('watched_position_cache', 5000, {})
+        const positionCache = Storage.cache('watched_position_cache', CACHE_LIMIT_WATCHED_POSITION, {})
         let positionChanged = false
         Object.keys(positionCache).forEach(key => {
             const item = positionCache[key]
