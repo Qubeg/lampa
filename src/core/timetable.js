@@ -21,7 +21,9 @@ let time_recent = 1000 * 60 * 60 * 24 * 14 // 14 дней
 
 let time_favorites = 1000 * 60 * 10
 let time_extract   = 1000 * 30
-let time_season    = 1000 * 60 * 60 * 24 * 7 // 7 дней
+let time_season    = 1000 * 60 * 60 * 24 // 1 день
+
+const TRACKED_CATEGORIES = ['like', 'wath', 'book', 'look', 'viewed', 'scheduled', 'continued']
 
 /**
  * Запуск
@@ -42,28 +44,24 @@ function init(){
         if(e.target == 'favorite' && e.reason == 'update' && (e.method == 'add' || e.method == 'added') && e.type !== 'history'){
             console.log('Timetable', 'favorite changed:', e.reason, e.type, e.card.id)
 
-            if(e.card.original_name && (e.card.source == 'tmdb' || e.card.source == 'cub')) update(e.card)
+            if((e.card.number_of_seasons || e.card.original_name) && (e.card.source == 'tmdb' || e.card.source == 'cub')) update(e.card)
         }
     })
 
     Favorite.listener.follow('remove',(e)=>{
-        if(e.card.original_name && e.method == 'id'){
-            let find = data.find(a=>a.id == e.card.id)
+        if((e.card.number_of_seasons || e.card.original_name) && e.method == 'id'){
+            if(!isCardTracked(e.card)){
+                let find = data.find(a=>a.id == e.card.id)
 
-            if(find){
-                Arrays.remove(data,find)
+                if(find){
+                    Arrays.remove(data,find)
 
-                saveData()
+                    saveData()
 
-                Storage.remove('timetable', find.id)
+                    Cache.deleteData('timetable', find.id)
+                }
             }
         }
-    })
-
-    Lampa.Listener.follow('worker_storage',(e)=>{
-        if(e.type == 'insert' && e.name == 'timetable'){
-            data = Storage.get('timetable','[]')
-        } 
     })
 
     // Начальный импорт из закладок
@@ -84,20 +82,7 @@ function init(){
             if(!results.length) return
 
             return function(call){
-                results.forEach(item=>{
-                    item.params = {
-                        createInstance: (item)=> new Episode(item),
-                        module: EpisodeModule.only('Card', 'Callback'),
-                        emit: {
-                            onlyEnter: Router.call.bind(Router, 'full', item.card),
-                            onlyFocus: ()=>{
-                                Background.change(Utils.cardImgBackgroundBlur(item.card))
-                            }
-                        }
-                    }
-
-                    Arrays.extend(item, item.episode)
-                })
+                results.forEach(createEpisodeParams)
 
                 call({
                     results,
@@ -120,20 +105,7 @@ function init(){
             if(!results.length) return
 
             return function(call){
-                results.forEach(item=>{
-                    item.params = {
-                        createInstance: (item)=> new Episode(item),
-                        module: EpisodeModule.only('Card', 'Callback'),
-                        emit: {
-                            onlyEnter: Router.call.bind(Router, 'full', item.card),
-                            onlyFocus: ()=>{
-                                Background.change(Utils.cardImgBackgroundBlur(item.card))
-                            }
-                        }
-                    }
-
-                    Arrays.extend(item, item.episode)
-                })
+                results.forEach(createEpisodeParams)
 
                 call({
                     results,
@@ -145,14 +117,36 @@ function init(){
 }
 
 /**
+ * Параметры для эпизода в ленте
+ * @param {object} item 
+ */
+function createEpisodeParams(item){
+    item.params = {
+        createInstance: (item)=> new Episode(item),
+        module: EpisodeModule.only('Card', 'Callback'),
+        emit: {
+            onlyEnter: Router.call.bind(Router, 'full', item.card),
+            onlyFocus: ()=>{
+                Background.change(Utils.cardImgBackgroundBlur(item.card))
+            }
+        }
+    }
+
+    Arrays.extend(item, item.episode)
+}
+
+/**
  * Загрузить эпизоды из кеша
  * @returns {void}
  */
 function loadEpisodes(){
     Cache.getData('timetable').then(all_data=>{
-        if(all_data){
+        if(all_data && all_data.length){
+            let map = new Map()
+            data.forEach(d => map.set(d.id, d))
+
             all_data.forEach(obj=>{
-                let find = data.find(d=>d.id == obj.id)
+                let find = map.get(obj.id)
                 if(find) find.episodes = obj.episodes || []
             })
 
@@ -168,20 +162,23 @@ function loadEpisodes(){
  * @param {[{id:integer,number_of_seasons:integer}]} elems - карточки
  */
 function add(elems, log_type){
-    let filtred = elems.filter(elem=>elem.original_name && typeof elem.id == 'number' && (elem.source == 'tmdb' || elem.source == 'cub'))
+    let filtred = elems.filter(elem=>(elem.number_of_seasons || elem.original_name) && typeof elem.id == 'number' && (elem.source == 'tmdb' || elem.source == 'cub'))
 
     console.log('Timetable', 'add:', elems.length, 'filtred:', filtred.length, 'type:', log_type || 'unknown')
 
-    filtred.forEach(elem=>{
-        let find = data.find(a=>a.id == elem.id)
+    let map = new Map()
+    data.forEach(d => map.set(d.id, d))
 
-        if(!find){
-            data.push({
+    filtred.forEach(elem=>{
+        if(!map.has(elem.id)){
+            let item = {
                 id: elem.id,
                 season: elem.number_of_seasons || 0,
                 episodes: [],
                 ssn: 0
-            })
+            }
+            data.push(item)
+            map.set(elem.id, item)
         }
     })
 
@@ -193,21 +190,33 @@ function add(elems, log_type){
  * @returns {void}
  */
 function saveData(){
-    let clear_data = Arrays.clone(data)
-        clear_data.forEach(a=>{a.episodes = []})
-
-    Storage.set('timetable', clear_data)
+    Storage.set('timetable', data.map(a => ({
+        id: a.id,
+        season: a.season,
+        ssn: a.ssn,
+        next: a.next,
+        scaned: a.scaned,
+        scaned_time: a.scaned_time
+    })))
 }
 
 /**
  * Добавить из закладок
  */
 function favorites(){
-    let category = ['like', 'wath', 'book', 'look', 'viewed', 'scheduled', 'continued']
-
-    category.forEach(a=>{
+    TRACKED_CATEGORIES.forEach(a=>{
         add(Favorite.get({type: a}), a)
     })
+}
+
+/**
+ * Проверить отслеживается ли карточка
+ * @param {object} card 
+ * @returns {boolean}
+ */
+function isCardTracked(card){
+    let check = Favorite.check(card)
+    return TRACKED_CATEGORIES.some(cat => check[cat])
 }
 
 function filter(episodes){
@@ -231,10 +240,7 @@ function filter(episodes){
  * Парсим карточку
  */
 function parse(to_database){
-    let check = Favorite.check(object)
-    let any   = Favorite.checkAnyNotHistory(check)
-
-    if(any || to_database){
+    if(isCardTracked(object) || to_database){
         // Если нет сезонов или давно не обновляли количество сезонов
         if(!object.season || Date.now() - object.ssn > time_season){
             console.log('Timetable', 'parse:', object.id, 'old season:', object.season)
@@ -243,8 +249,11 @@ function parse(to_database){
                 object.season = Utils.countSeasons(json) || 1
                 object.ssn    = Date.now()
 
+                if(json.next_episode_to_air) object.next = filter([json.next_episode_to_air])[0]
+                else                         object.next = false
+
                 parse(to_database)
-            }, save, {life: 60 * 24 * 3})
+            }, save, {life: 60 * 24})
         }
         else{
             console.log('Timetable', 'parse:', object.id, 'new season:', object.season)
@@ -253,7 +262,10 @@ function parse(to_database){
                 if(!ep.episodes) return save()
                 
                 object.episodes = filter(ep.episodes_original || ep.episodes)
-                object.next     = getNextEpisode(object.episodes)
+                
+                let next = getNextEpisode(object.episodes)
+                
+                if(next) object.next = next
 
                 Cache.getData('timetable',object.id).then(obj=>{
                     if(obj) obj.episodes = object.episodes
@@ -269,7 +281,7 @@ function parse(to_database){
                 }).catch(e=>{})
 
                 save()
-            },save, {life: 60 * 24 * 3})
+            },save, {life: 60 * 24})
         }
     }
     else{
@@ -277,7 +289,7 @@ function parse(to_database){
 
         Arrays.remove(data, object)
 
-        Storage.remove('timetable', object.id)
+        Cache.deleteData('timetable', object.id)
 
         save()
     }
@@ -286,25 +298,30 @@ function parse(to_database){
 /**
  * Получить следующий эпизод из списка
  * @param {[{air_date:string}]} episodes - эпизоды
+ * @param {object} card - карточка для проверки просмотра
  * @returns {object|boolean}
  */
-function getNextEpisode(episodes){
-    let now_date = new Date()
-        now_date.setHours(0,0,0)
+function getNextEpisode(episodes, card){
+    let now = new Date()
+        now.setHours(0,0,0,0)
 
-    let now_time = now_date.getTime()
-    let now_year = now_date.getFullYear()
-    let nxt_year = now_year + 1
+    let now_time = now.getTime()
 
-    let any = episodes.filter(ep=>{
+    return episodes.find(ep=>{
         if(ep.air_date){
-            if(ep.air_date.indexOf(now_year) === 0 || ep.air_date.indexOf(nxt_year) === 0){
-                return Lampa.Utils.parseToDate(ep.air_date).getTime() >= now_time
+            let air_time = Utils.parseToDate(ep.air_date).getTime()
+
+            if(air_time >= now_time){
+                if(card){
+                    let viewed = Timeline.watchedEpisode(card, ep.season_number, ep.episode_number)
+
+                    if(viewed >= 60) return false
+                }
+
+                return true
             }
         }
-    })
-
-    return any.length ? any[0] : false
+    }) || false
 }
 
 /**
@@ -367,9 +384,7 @@ function get(elem, callback){
  * @param {{id:integer,number_of_seasons:integer}} elem - карточка
  */
 function update(elem){
-    if(elem.original_name && typeof elem.id == 'number' && (elem.source == 'tmdb' || elem.source == 'cub')){
-        let check = Favorite.check(elem)
-        let any   = Favorite.checkAnyNotHistory(check)
+    if((elem.number_of_seasons || elem.original_name) && typeof elem.id == 'number' && (elem.source == 'tmdb' || elem.source == 'cub')){
         let id    = data.filter(a=>a.id == elem.id)
         let item  = {
             id: elem.id,
@@ -378,7 +393,7 @@ function update(elem){
             ssn: Date.now()
         }
 
-        if(any){
+        if(isCardTracked(elem)){
             if(!id.length){
                 console.log('Timetable', 'push:', elem.id)
 
@@ -412,22 +427,31 @@ function all(){
 }
 
 function lately(){
-    let fav = favoriteCards()
+    let favMap = favoriteCards()
+    let now    = new Date()
+        now.setHours(0,0,0,0)
 
-    let cards = []
+    let now_time = now.getTime()
+    let cards    = []
 
-    data.filter(d=>fav.find(c=>c.id == d.id)).forEach(season=>{
-        let episode = season.episodes.length ? getNextEpisode(season.episodes) : season.next
+    data.filter(d=>favMap.has(d.id)).forEach(season=>{
+        let card    = favMap.get(season.id)
+        let episode = season.episodes.length ? getNextEpisode(season.episodes, card) : season.next
         
         if(episode){
-            // Проверка season.next на актуальность
-            if(Lampa.Utils.parseToDate(episode.air_date).getTime() >= Date.now()){
-                cards.push({
-                    card: Arrays.clone(fav.find(c=>c.id == season.id)),
-                    episode: episode,
-                    time: Lampa.Utils.parseToDate(episode.air_date).getTime(),
-                    season
-                })
+            let air_time = Utils.parseToDate(episode.air_date).getTime()
+
+            if(air_time >= now_time){
+                let viewed = Timeline.watchedEpisode(card, episode.season_number, episode.episode_number)
+
+                if(viewed < 60){
+                    cards.push({
+                        card: Arrays.clone(card),
+                        episode: episode,
+                        time: air_time,
+                        season
+                    })
+                }
             }
         }
     })
@@ -442,8 +466,8 @@ function lately(){
 }
 
 function recently(){
-    let fav = favoriteCards()
-    let now = new Date()
+    let favMap = favoriteCards()
+    let now    = new Date()
         now.setHours(0,0,0,0)
 
     let now_time = now.getTime()
@@ -451,22 +475,22 @@ function recently(){
 
     let cards = []
 
-    data.filter(d=>fav.find(c=>c.id == d.id)).forEach(season=>{
+    data.filter(d=>favMap.has(d.id)).forEach(season=>{
         if(!season.episodes || !season.episodes.length) return
 
-        let card = Arrays.clone(fav.find(c=>c.id == season.id))
+        let card = favMap.get(season.id)
 
         season.episodes.forEach(episode=>{
             if(!episode.air_date) return
 
             let air_time = Utils.parseToDate(episode.air_date).getTime()
 
-            if(air_time >= start_time && air_time <= now_time){
+            if(air_time >= start_time && air_time < now_time){
                 let viewed = Timeline.watchedEpisode(card, episode.season_number, episode.episode_number)
 
                 if(viewed < 60){
                     cards.push({
-                        card,
+                        card: Arrays.clone(card),
                         episode: episode,
                         viewed,
                         time: air_time,
@@ -487,13 +511,18 @@ function recently(){
 }
 
 function favoriteCards(){
-    let fav = Favorite.full().card
+    let fav = Account.Permit.sync ? Account.Bookmarks.all() : Favorite.full().card
+    let map = new Map()
 
-    if(Account.Permit.sync) fav = Account.Bookmarks.all()
+    fav.forEach(f=>{
+        if(f && f.id && (f.number_of_seasons || f.original_name) && (f.source == 'tmdb' || f.source == 'cub')){
+            if(isCardTracked(f)){
+                if(!map.has(f.id)) map.set(f.id, f)
+            }
+        }
+    })
 
-    fav = fav.filter(f=>f.original_name && (f.source == 'tmdb' || f.source == 'cub'))
-
-    return fav
+    return map
 }
 
 export default {
