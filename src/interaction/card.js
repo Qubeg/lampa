@@ -8,6 +8,7 @@ import Storage from '../core/storage/storage'
 import Utils from '../utils/utils'
 import Timetable from '../core/timetable'
 import Timeline from './timeline'
+import Watched from './watched'
 import Lang from '../core/lang'
 import Tmdb from '../core/tmdb/tmdb'
 import Manifest from '../core/manifest'
@@ -225,95 +226,31 @@ function Card(data, params = {}){
      * Какие серии просмотрено
      */
     this.watched = function(){
-        if(!Storage.field('card_episodes')) return
+        if(!Storage.field('card_episodes') || this.watched_checked) return
 
-        if(!this.watched_checked){
-            function get(callback){
-                if(data.original_name) Timetable.get(data, callback)
-                else callback([])
-            }
-
-            get(episodes=>{
-                let viewed
-
-                episodes.forEach(ep=>{
-                    let hash = Utils.hash([ep.season_number, ep.season_number > 10 ? ':' : '',ep.episode_number,data.original_title].join(''))
-                    let view = Timeline.view(hash)
-
-                    if(view.percent) viewed = {ep, view}
-                })
-
-                if(!viewed && data.original_name){
-                    let last  = Storage.get('online_watched_last', '{}')
-                    let filed = last[Utils.hash(data.original_title)]
-
-                    if(filed && filed.episode){
-                        viewed = {
-                            ep: {
-                                episode_number: filed.episode,
-                                name: Lang.translate('full_episode') + ' ' + filed.episode,
-                            },
-                            view: Timeline.view(Utils.hash([filed.season, filed.season > 10 ? ':' : '',filed.episode,data.original_title].join('')))
-                        }
-                    }
-                }
-
-                if(!viewed && !data.original_name){
-                    let time = Timeline.view(Utils.hash([data.original_title].join('')))
-
-                    if(time.percent) {
-                        viewed = {
-                            ep: {
-                                name: Lang.translate('title_viewed') + ' ' + (time.time ? Utils.secondsToTimeHuman(time.time) : time.percent + '%'),
-                            },
-                            view: time
-                        }
-                    }
-                }
-
-                if(viewed){
-                    let soon = []
-                    let next = episodes.slice(episodes.indexOf(viewed.ep)).filter(ep=>ep.air_date).filter(ep=>{
-                        let date = Utils.parseToDate(ep.air_date).getTime()
-
-                        if(date > Date.now()) soon.push(ep)
-
-                        return date < Date.now()
-                    }).slice(0,5)
-
-                    if(next.length == 0) next = [viewed.ep]
-
-                    if(soon.length && next.length < 5 && !next.find(n=>n.episode_number == soon[0].episode_number)) next.push(soon[0])
-
-                    let wrap = Template.js('card_watched',{})
-
-                    next.forEach(ep=>{
-                        let div  = document.createElement('div')
-                        let span = document.createElement('span')
-                        let date = Utils.parseToDate(ep.air_date)
-                        let now  = Date.now()
-                        let days = Math.ceil((date.getTime() - now)/(24*60*60*1000))
-
-                        div.classList.add('card-watched__item')
-                        div.appendChild(span)
-
-                        span.innerText = (ep.episode_number ?  ep.episode_number + ' - ' : '') + (days > 0 ? Lang.translate('full_episode_days_left') + ': ' + days : (ep.name || Lang.translate('noname')))
-
-                        if(ep == viewed.ep) div.appendChild(Timeline.render(viewed.view)[0])
-
-                        wrap.querySelector('.card-watched__body').appendChild(div)
-                    })
-
-                    this.watched_wrap = wrap
-
-                    let view = this.card.querySelector('.card__view')
-
-                    view.insertBefore(wrap, view.firstChild)
-                }
-            })
-
-            this.watched_checked = true
+        // Отменяем предыдущие запросы для карточки
+        if(this.watched_abort_key) {
+            Watched.abortRequestsByPrefix(this.watched_abort_key)
         }
+        
+        // Создаем уникальный ключ для карточки
+        this.watched_abort_key = `card_${data?.id || 'unknown'}_${Date.now()}`
+
+        const mount = this.card.querySelector('.card__view')
+        if(this.watched_wrap) this.watched_wrap.remove()
+
+        Watched.getPlan(data, { abortKey: this.watched_abort_key }).then(plan => {
+            if(!plan) return
+            this.watched_wrap = Watched.render(plan, { 
+                mount, 
+                position: 'prepend', 
+                withTimeline: true, 
+                fetchNames: true,
+                abortKey: this.watched_abort_key
+            })
+        })
+
+        this.watched_checked = true
     }
 
     /**
@@ -329,7 +266,7 @@ function Card(data, params = {}){
         if(status.book) this.addicon('book')
         if(status.like) this.addicon('like')
         if(status.wath) this.addicon('wath')
-        if(status.history || Timeline.watched(data)) this.addicon('history')
+        if(status.history || Watched.check(data)) this.addicon('history')
 
         let any_marker = marks.find(m=>status[m])
 
@@ -556,6 +493,10 @@ function Card(data, params = {}){
      * Уничтожить
      */
     this.destroy = function(){
+        if(this.watched_abort_key) {
+            Watched.abortRequestsByPrefix(this.watched_abort_key)
+        }
+
         this.img.onerror = ()=>{}
         this.img.onload = ()=>{}
 

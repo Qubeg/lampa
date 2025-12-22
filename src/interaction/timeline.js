@@ -180,38 +180,6 @@ function details(params, str = ''){
 }
 
 /**
- * Проверить, смотрел ли файл
- * @param {object} card - карточка файла
- * @return {number} - процент просмотра (0-100)
- */
-function watched(card, return_time = false){
-    if(card.original_name){
-        let max  = 24
-        let list = []
-        
-        for(let i = 1; i <= max; i++){
-            let time = view(Utils.hash([1, i, card.original_name].join('')))
-
-            if(time.percent) {
-                list.push({ep: i, view: time})
-            }
-        }
-
-        return return_time ? list : list.length
-    }
-    else{
-        let time = view(Utils.hash(card.original_title))
-
-        return return_time ? time : time.percent
-    }
-}
-
-function watchedEpisode(card, season, episode, return_time = false){
-    let time = view(Utils.hash([season, season > 10 ? ':' : '',episode,card.original_name || card.original_title].join('')))
-    return return_time ? time : time.percent
-}
-
-/**
  * Форматировать прогресс в понятный человекy вид
  * @param {object} params - параметры прогресса от функции view
  * @return {object} - объект с отформатированными параметрами {percent, time, duration}
@@ -226,6 +194,11 @@ function format(params){
     return road
 }
 
+function watchedEpisode(card, season, episode, return_time = false){
+    let time = view(Utils.hash([season, season > 10 ? ':' : '',episode,card.original_name || card.original_title].join('')))
+    return return_time ? time : time.percent
+}
+
 export default {
     init: Utils.onceInit(init),
     read,
@@ -235,7 +208,6 @@ export default {
     view,
     details,
     format,
-    watched,
     watchedEpisode,
     filename
 }

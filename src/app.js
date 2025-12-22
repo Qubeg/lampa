@@ -42,6 +42,7 @@ import PlayerInfo from './interaction/player/info'
 import PlayerIPTV from './interaction/player/iptv'
 import PlayerPlaylist from './interaction/player/playlist'
 import Timeline from './interaction/timeline'
+import Watched from './interaction/watched'
 import Settings from './interaction/settings/settings'
 import SettingsApi from './interaction/settings/api'
 import Modal from './interaction/modal'
@@ -298,6 +299,7 @@ function initClass(){
         PlayerIPTV,
         PlayerPlaylist,
         Timeline,
+        Watched,
         Modal,
         Api,
         Settings,

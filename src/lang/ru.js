@@ -1264,4 +1264,6 @@ export default {
 
     remote_helper_long: 'Удерживайте кнопку (ОК) для вызова меню',
     no_watch_history: 'Нет истории просмотра',
+    missed_episodes: 'Пропущенные серии',
+    last_episode_now: 'Последняя серия на данный момент',
 }

@@ -1240,4 +1240,6 @@ export default {
     account_profile_info: 'Você pode gerenciar os perfis nas configurações da sua conta. Para isso, acesse <span class="account-modal__site">{site}/profiles</span>',
     player_youtube_no_support: 'O seu dispositivo não suporta a reprodução de vídeos do YouTube, verifique a sua ligação à Internet.',
     title_channels: 'Canais',
+    missed_episodes: 'Episódios perdidos',
+    last_episode_now: 'Último episódio por agora',
 }

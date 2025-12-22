@@ -1,5 +1,6 @@
 import Favorite from '../../../core/favorite'
 import Timeline from '../../timeline'
+import Watched from '../../watched'
 import Lang from '../../../core/lang'
 import Account from '../../../core/account/account'
 import Select from '../../select'
@@ -107,7 +108,7 @@ export default {
         if(status.book) this.emit('addicon','book')
         if(status.like) this.emit('addicon','like')
         if(status.wath) this.emit('addicon','wath')
-        if(status.history || Timeline.watched(this.data)) this.emit('addicon','history')
+        if(status.history || Watched.check(this.data)) this.emit('addicon','history')
 
         let any_marker = marks.find(m=>status[m])
 

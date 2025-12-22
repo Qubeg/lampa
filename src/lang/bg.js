@@ -1256,4 +1256,6 @@ export default {
     account_profile_info: 'Можете да управлявате профилите в настройките на профила си. За да направите това, отидете на <span class="account-modal__site">{site}/profiles</span>',
     player_youtube_no_support: 'Вашето устройство не поддържа възпроизвеждане на YouTube видеоклипове, проверете интернет връзката.',
     title_channels: 'Канали',
+    missed_episodes: 'Пропуснати епизоди',
+    last_episode_now: 'Последен епизод за момента',
 }
