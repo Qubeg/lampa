@@ -4,6 +4,7 @@ import Controller from './controller'
 import Utils from '../utils/math'
 import DeviceInput from '../utils/device_input'
 import Activity from './activity'
+import Layer from '../utils/layer'
 import Subscribe from '../utils/subscribe'
 
 let html
@@ -142,6 +143,12 @@ function toggle(){
             Controller.collectionFocus(selected.length ? selected[0] : false,html)
 
             listener.send('toggle', {active, html})
+        },
+        update: ()=>{
+            Layer.update()
+
+            let selected = scroll.render().find('.selected')
+            if(selected.length) scroll.update(selected, true)
         },
         up: ()=>{
             Navigator.move('up')
