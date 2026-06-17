@@ -614,6 +614,48 @@ function countSeasons(movie){
     return count
 }
 
+function splitEpisodesIntoSeasons(episodes, gap = 90) {
+    if (!Array.isArray(episodes) || episodes.length === 0) return {}
+
+    function dateToDays(date) {
+        if (!date || typeof date !== 'string') return 0
+        const parts = date.split('-')
+        if (parts.length !== 3) return 0
+        return (
+            parseInt(parts[0], 10) * 365 +
+            parseInt(parts[1], 10) * 30 +
+            parseInt(parts[2], 10)
+        )
+    }
+
+    episodes = [...episodes].sort((a, b) => a.episode_number - b.episode_number)
+
+    let seasons = {}
+    let seasonNum = 1
+    let lastDay = 0
+
+    for (let ep of episodes) {
+        const day = dateToDays(ep.air_date)
+
+        if (day > 0 && lastDay > 0 && day - lastDay > gap) {
+            seasonNum++
+        }
+
+        if (day > 0) lastDay = day
+
+        if (!seasons[seasonNum]) seasons[seasonNum] = []
+
+        const newEp = { ...ep }
+        newEp.season_number = seasonNum
+        newEp.episode_number = seasons[seasonNum].length + 1
+        newEp.id = 900000 + seasonNum * 1000 + newEp.episode_number
+
+        seasons[seasonNum].push(newEp)
+    }
+
+    return seasons
+}
+
 function countDays(time_a, time_b){
     let d1 = new Date(time_a)
     let d2 = new Date(time_b)
@@ -894,6 +936,7 @@ export default {
     toggleFullscreen,
     canFullScreen,
     countSeasons,
+    splitEpisodesIntoSeasons,
     countDays,
     decodePG,
     trigger,

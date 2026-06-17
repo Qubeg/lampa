@@ -468,15 +468,52 @@ function list(params = {}, oncomplite, onerror){
     network.silent(u,oncomplite, onerror)
 }
 
+function seasonFix(season_need, method, params, oncomplite, onerror){
+    method = method.replace(/\/season\/(\d+)/,'/season/1')
+
+    network.timeout(1000 * 10)
+    network.silent(url(method, params),(new_json)=>{
+        new_json.url = method
+
+        let seasons = Utils.splitEpisodesIntoSeasons(new_json.episodes)
+
+        new_json.seasons_count = Arrays.getKeys(seasons).length
+
+        if(seasons[season_need]){
+            new_json.episodes = seasons[season_need]
+            new_json.season_number = season_need
+            new_json.name = Lang.translate('torrent_serial_season') + ' ' + season_need
+
+            oncomplite(new_json)
+        }
+        else if(onerror) onerror()
+    }, onerror)
+}
+
 function get(method, params = {}, oncomplite, onerror){
     let u = url(method, params)
-    
+    let s = method.match(/tv\/(\d+)\/season\/(\d+)/)
+
     network.timeout(1000 * 10)
     network.silent(u,(json)=>{
         json.url = method
 
+        if(s && s[2] == 1){
+            let seasons = Utils.splitEpisodesIntoSeasons(json.episodes)
+
+            json.seasons_count = Arrays.getKeys(seasons).length
+
+            if(seasons[1]){
+                json.episodes_original = json.episodes
+                json.episodes = seasons[1]
+            }
+        }
+
         oncomplite(json)
-    }, onerror)
+    }, ()=>{
+        if(s) seasonFix(parseInt(s[2], 10), method, params, oncomplite, onerror)
+        else if(onerror) onerror()
+    })
 }
 
 function search(params = {}, oncomplite){
