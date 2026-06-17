@@ -4,7 +4,6 @@ import Controller from './controller'
 import Utils from '../utils/math'
 import DeviceInput from '../utils/device_input'
 import Activity from './activity'
-import Layer from '../utils/layer'
 import Subscribe from '../utils/subscribe'
 
 let html
@@ -35,6 +34,7 @@ function init(){
 
 function bind(){
     scroll.clear()
+    scroll.reset()
 
     html.find('.selectbox__title').text(active.title)
     html.toggleClass('selectbox--fullsize', active.fullsize ? true : false)
@@ -64,10 +64,10 @@ function bind(){
 
         if(element.ghost) item.css('opacity',0.5)
 
-        item.on('hover:focus',(e)=>{
-            scroll.update($(e.target), true)
+        item.on('hover:focus',()=>{
+            scroll.update(item, true)
 
-            if(active.onFocus) active.onFocus(element, e.target)
+            if(active.onFocus) active.onFocus(element, item[0])
         })
 
         if(!element.noenter){
@@ -142,13 +142,9 @@ function toggle(){
             Controller.collectionSet(html)
             Controller.collectionFocus(selected.length ? selected[0] : false,html)
 
-            listener.send('toggle', {active, html})
-        },
-        update: ()=>{
-            Layer.update()
+            if(selected.length) setTimeout(() => scroll.update(selected, true), 0)
 
-            let selected = scroll.render().find('.selected')
-            if(selected.length) scroll.update(selected, true)
+            listener.send('toggle', {active, html})
         },
         up: ()=>{
             Navigator.move('up')
