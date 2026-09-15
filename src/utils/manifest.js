@@ -4,7 +4,7 @@ let object = {
     github_lampa: 'https://yumata.github.io/lampa/',
     css_version: '2.7.0',
     app_version: '2.4.6',
-    cub_site: 'cub.rip'
+    cub_site: 'cub.best'
 }
 
 let plugins = []
@@ -34,7 +34,7 @@ Object.defineProperty(object, 'old_mirrors', {
  */
 Object.defineProperty(object, 'cub_mirrors', { 
     get: ()=> {
-        let lampa = ['cub.rip', 'durex.monster', 'cubnotrip.top']
+        let lampa = ['cub.best', 'durex.monster', 'cubnotrip.top']
         let users = localStorage.getItem('cub_mirrors') || '[]'
 
         try {
