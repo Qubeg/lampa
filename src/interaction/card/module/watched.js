@@ -27,7 +27,7 @@ export default {
 
     onUpdate: function(){
         this.watched_gen = (this.watched_gen || 0) + 1
-        this.watched_checked = false
+        this.watched_wait = false
 
         this.watched_wrap?.remove()
 
@@ -35,9 +35,7 @@ export default {
     },
 
     onWatched: function(){
-        if(!Storage.field('card_episodes') || this.watched_checked) return
-
-        this.watched_checked = true
+        if(!Storage.field('card_episodes') || this.watched_wrap || this.watched_wait) return
 
         let data = this.data
         let self = this
@@ -151,14 +149,20 @@ export default {
 
         if(!found) return
 
+        this.watched_wait = true
+
         // Список серий режется в Api.seasons
         Api.seasons(data, [found.season], (result)=>{
             if(gen != (self.watched_gen || 0)) return
 
+            self.watched_wait = false
+
             let episodes = (result[found.season] && result[found.season].episodes) || []
             let last = episodes.reduce((max, ep)=>Math.max(max, ep.episode_number || 0), 0)
 
-            if(!(last && found.episode >= last)) return render(episodes, found)
+            render(episodes, found)
+
+            if(!(last && found.episode >= last)) return
 
             Api.seasons(data, [found.season + 1], (next)=>{
                 if(gen != (self.watched_gen || 0)) return
@@ -172,6 +176,7 @@ export default {
 
     onDestroy: function(){
         this.watched_gen = (this.watched_gen || 0) + 1
+        this.watched_wait = false
 
         Lampa.Listener.remove('state:changed', this.listenerWatched)
     }
