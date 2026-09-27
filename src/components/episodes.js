@@ -84,6 +84,15 @@ function component(object){
                             module: EpisodeModule.toggle(EpisodeModule.MASK.base, 'Line')
                         }
 
+                        if(object.onEnter){
+                            episode.params.module = EpisodeModule.only('Line', 'Callback')
+                            episode.params.emit = {
+                                onEnter: function(){
+                                    object.onEnter(this.data, v[season].episodes)
+                                }
+                            }
+                        }
+
                         results.push(episode)
                     })
 
