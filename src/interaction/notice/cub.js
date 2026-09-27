@@ -4,8 +4,6 @@ import Notice from './notice'
 import NoticeClass from './class'
 import Storage from '../../core/storage/storage'
 import Utils from '../../utils/utils'
-import Manifest from '../../core/manifest'
-import Platform from '../../core/platform'
 import Timer from '../../core/timer'
 import Cache from '../../utils/cache'
 import Permit from '../../core/account/permit'
@@ -160,11 +158,7 @@ class NoticeCub extends NoticeClass {
         let item = super.empty(Lang.translate('empty_title_two'), Lang.translate('notice_none_account'))
 
         if(!Account.Permit.access){
-            item = super.empty(Lang.translate('account_none_title'), Lang.translate('notice_none'))
-
-            if(Platform.screen('tv')) Utils.qrcode('https://' + Manifest.cub_site, item.find('.notice__img'))
-
-            return item
+            return super.empty(Lang.translate('account_none_title'), Lang.translate('notice_none'))
         }
 
         return item

@@ -966,26 +966,6 @@ function qualityToText(quality){
     return text
 }
 
-function guid() {
-    let hex = "0123456789ABCDEF";
-    let gi  = "";
-
-    for (let i = 0; i < 36; i++) {
-        if (i === 8 || i === 13 || i === 18 || i === 23) {
-            gi += "-";
-        } else {
-            let r = Math.floor(Math.random() * 16);
-            // Устанавливаем версию и variant по UUIDv4 спецификации
-            if (i === 14) r = 4; // версия 4
-            if (i === 19) r = (r & 0x3) | 0x8; // variant
-            gi += hex[r];
-        }
-    }
-
-    return gi;
-}
-
-
 function createInstance(BaseClass, element, add_params = {}, replace = false){
     Arrays.extend(element, {params: {}})
 
@@ -1019,24 +999,6 @@ function extendItemsParams(items, params = {}, replace = false){
         if(!items[i]) continue
 
         extendParams(items[i], params, replace)
-    }
-}
-
-function qrcode(text, element, error){
-    try{
-        let qr = window.qrcode(0, 'H')
-            qr.addData(text, 'Byte')
-            qr.make()
-
-        if(element instanceof jQuery) element = element[0]
-
-        element.innerHTML = qr.createSvgTag({ 
-            cellSize: 8,
-            margin: 10
-        })
-    }
-    catch(e){
-        error && error(e)
     }
 }
 
@@ -1166,7 +1128,6 @@ export default {
     pathToNormalTitle,
     hash,
     uid,
-    guid,
     copyTextToClipboard,
     imgLoad,
     isTouchDevice,
@@ -1195,7 +1156,6 @@ export default {
     createInstance,
     extendParams,
     extendItemsParams,
-    qrcode,
     onceInit,
     containsJapanese,
     randomMinMax,

@@ -8,7 +8,6 @@ import Bookmarks from './bookmarks'
 import Profile from './profile'
 import Backup from './backup'
 import Utils from '../../utils/utils'
-import Manifest from '../manifest'
 
 function init(){
     Settings.listener.follow('open',(e)=>{
@@ -25,9 +24,6 @@ function render(body){
         body.find('[data-name="account_use"]').remove()
     }
 
-    Utils.qrcode('https://' + Manifest.cub_site, body.find('.ad-server__qr'))
-
-    
     body.find('.settings--account-signin').toggleClass('hide',signed)
     body.find('.settings--account-user').toggleClass('hide',!signed)
     body.find('.settings-param__label').toggleClass('hide',!Boolean(premium))

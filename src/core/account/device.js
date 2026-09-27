@@ -2,7 +2,6 @@ import Api from './api'
 import Utils from '../../utils/utils'
 import Storage from '../storage/storage'
 import Template from '../../interaction/template'
-import Manifest from '../manifest'
 import Controller from '../controller'
 import Noty from '../../interaction/noty'
 import Loading from '../../interaction/loading'
@@ -74,21 +73,7 @@ function login(callback){
     let nums = html.find('.account-modal-split__code-num')
     let keyboard
 
-    if(Platform.tv()){
-        let code = html.find('.account-modal-split__qr-code')
-        let img  = html.find('.account-modal-split__qr-img')
-
-        html.addClass('layer--' + (Platform.mouse() ? 'wheight' : 'height'))
-
-        Utils.qrcode('https://' +  Manifest.cub_site + '/add', code, ()=>{
-            code.remove()
-            img.removeClass('hide')
-
-            Utils.imgLoad(img, Utils.protocol() + Manifest.qr_device_add, ()=>{
-                img.addClass('loaded')
-            })
-        })
-    }
+    if(Platform.tv()) html.addClass('layer--' + (Platform.mouse() ? 'wheight' : 'height'))
     else html.addClass('account-modal-split--mobile')
 
     function drawCode(value){

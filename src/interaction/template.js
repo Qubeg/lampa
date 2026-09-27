@@ -45,7 +45,6 @@ import modal from '../templates/modal'
 import company from '../templates/company'
 import modal_loading from '../templates/modal_loading'
 import modal_pending from '../templates/modal_pending'
-import modal_qr from '../templates/modal_qr'
 import person_start from '../templates/person/start'
 import empty from '../templates/empty/simple'
 import empty_filter from '../templates/empty/filter'
@@ -115,14 +114,12 @@ import explorer_button_back from '../templates/explorer/button_back'
 import https from '../templates/https'
 import navigation_bar from '../templates/navigation_bar'
 import head_backward from '../templates/head_backward'
-import account_add_device from '../templates/account/add_device_old'
 import account_add_device_new from '../templates/account/add_device'
 import feed_item from '../templates/feed/item'
 import feed_head from '../templates/feed/head'
 import feed_episode from '../templates/feed/episode'
 import register from '../templates/register'
 import speedtest from '../templates/speedtest'
-import ad_video_block from '../templates/ad/video'
 import discuss_rules from '../templates/discuss_rules'
 import bookmarks_folder from '../templates/bookmarks_folder'
 import ai_search_animation from '../templates/ai/search_animation'
@@ -178,7 +175,6 @@ let templates = {
     company,
     modal_loading,
     modal_pending,
-    modal_qr,
     person_start,
     empty,
     empty_filter,
@@ -247,7 +243,6 @@ let templates = {
     https,
     navigation_bar,
     head_backward,
-    account_add_device,
     account_add_device_new,
     feed_item,
     feed_head,
@@ -257,7 +252,6 @@ let templates = {
     season_episode,
     season_episode_rate,
     season_info,
-    ad_video_block,
     discuss_rules,
     bookmarks_folder,
     ai_search_animation,

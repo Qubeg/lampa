@@ -1,7 +1,6 @@
 import TMDB from '../../../core/api/sources/tmdb'
 import TMDBApi from '../../../core/tmdb/tmdb'
 import Template from '../../template'
-import VPN from '../../../core/vpn'
 
 export default {
     onInit: function(){
@@ -43,8 +42,6 @@ export default {
 
                 $(this.img).after(Template.elem('div', {class: 'card__img-broken', children: [
                     Template.elem('div', {children: [
-                        Template.elem('div', {text: VPN.code().toUpperCase()}),
-                        Template.elem('br'),
                         Template.elem('div', {text: load_src.split('?')[0]})
                     ]})
                 ]}))

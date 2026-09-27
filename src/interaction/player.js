@@ -18,8 +18,7 @@ import Noty from '../interaction/noty'
 import Lang from '../core/lang'
 import Arrays from '../utils/arrays'
 import Background from './background'
-import TV from './player/iptv' 
-import Preroll from './advert/preroll'
+import TV from './player/iptv'
 import Footer from './player/footer'
 import Segments from './player/segments'
 import ExternalPlayer from '../core/externalPlayer'
@@ -477,11 +476,9 @@ function launchExternalPlayer(data, player_need, players, infuseCallbacks, onFal
     let launch = (external_url)=>{
         if(!external_url) return onFallback ? onFallback() : null
 
-        Preroll.show(data,()=>{
-            listener.send('external',data)
+        listener.send('external',data)
 
-            window.location.assign(external_url)
-        })
+        window.location.assign(external_url)
     }
 
     prepareInfuseLaunch(data, player_need, ()=>{
@@ -547,16 +544,14 @@ function start(data, need, inner){
         }, null, launchInner)
     }
     else if(Platform.is('webos') && (Storage.field(player_need) == 'webos' || launch_player == 'webos')){
-        Preroll.show(data,()=>{
-            runWebOSPlayer({
-                need: 'com.webos.app.photovideo',
-                url: Torserver.toPlayUrl(data.url),
-                name: data.path || data.title,
-                position: data.timeline ? (data.timeline.time || -1) : -1
-            })
-
-            listener.send('external',data)
+        runWebOSPlayer({
+            need: 'com.webos.app.photovideo',
+            url: Torserver.toPlayUrl(data.url),
+            name: data.path || data.title,
+            position: data.timeline ? (data.timeline.time || -1) : -1
         })
+
+        listener.send('external',data)
     } 
     else if(Platform.is('android') && (Storage.field(player_need) == 'android' || launch_player == 'android' || (data.torrent_hash && !Torserver.gstWork()))){
         data.url   = Torserver.toPlayUrl(data.url)
@@ -571,38 +566,34 @@ function start(data, need, inner){
             })
         }
 
-        Preroll.show(data,()=>{
-            data.position = data.timeline ? (data.timeline.time || -1) : -1
+        data.position = data.timeline ? (data.timeline.time || -1) : -1
 
-            Android.openPlayer(data.url, data)
+        Android.openPlayer(data.url, data)
 
-            listener.send('external',data)
-        })
+        listener.send('external',data)
     }
     else if(Platform.desktop() && Storage.field(player_need) == 'other'){
         const path = Storage.field('player_nw_path')
         const supportedTypes = Object.values(ExternalPlayer.PLAYER_TYPES)
         const detectedType = supportedTypes.find(type => path.toLowerCase().indexOf(type) !== -1)
 
-        Preroll.show(data,()=>{
-            const url = Torserver.toPlayUrl(data.url)
+        const url = Torserver.toPlayUrl(data.url)
 
-            if (detectedType) {
-                ExternalPlayer.openPlayer(url, data, {
-                    type: detectedType,
-                    fullscreen: Storage.field('player_external_fullscreen')
-                })
+        if (detectedType) {
+            ExternalPlayer.openPlayer(url, data, {
+                type: detectedType,
+                fullscreen: Storage.field('player_external_fullscreen')
+            })
+        } else {
+            const file = require('fs')
+            if (file.existsSync(path)) {
+                const spawn = require('child_process').spawn
+                spawn(path, [encodeURI(url)])
             } else {
-                const file = require('fs')
-                if (file.existsSync(path)) {
-                    const spawn = require('child_process').spawn
-                    spawn(path, [encodeURI(url)])
-                } else {
-                    Noty.show(Lang.translate('player_not_found') + ': ' + path)
-                }
+                Noty.show(Lang.translate('player_not_found') + ': ' + path)
             }
-            listener.send('external', data)
-        })
+        }
+        listener.send('external', data)
     }
     else launchInner()
 
@@ -699,20 +690,17 @@ function play(data){
         // Запоминаем текущий объект, чтобы потом можно было получить его в других методах
         work = data
 
-        // Если есть реклама, то показываем её, затем запускаем плеер
-        Preroll.show(data,()=>{
-            listener.send('start', data)
+        listener.send('start', data)
 
-            console.log('Player','play url', data.url)
+        console.log('Player','play url', data.url)
 
-            Video.url(Torserver.toPlayUrl(data.url))
+        Video.url(Torserver.toPlayUrl(data.url))
 
-            toggle()
+        toggle()
 
-            Timeline.needToContinue(toggle)
+        Timeline.needToContinue(toggle)
 
-            listener.send('ready', data)
-        })
+        listener.send('ready', data)
     }
 
     if(launch_player) data.launch_player = launch_player
@@ -741,10 +729,7 @@ function iptv(data){
             listener.send('ready',data)
         }
 
-        start(data, 'iptv', ()=>{
-            if(data.vast_url) Preroll.show(data,lauch)
-            else lauch()
-        })
+        start(data, 'iptv', lauch)
     })
 }
 

@@ -205,20 +205,11 @@ function install(what){
     if(what == 'apk'){
         let html = Template.js('account_none')
 
-        if(tv()){
-            let code = html.find('.account-modal-split__qr-code')
-
-            html.addClass('layer--' + (mouse() ? 'wheight' : 'height'))
-
-            Utils.qrcode(Manifest.apk_link_download, code, ()=>{
-                html.find('.account-modal-split__qr').addClass('hide')
-            })
-        }
+        if(tv()) html.addClass('layer--' + (mouse() ? 'wheight' : 'height'))
         else html.addClass('account-modal-split--mobile')
 
         html.find('.account-modal-split__title').text(Lang.translate('install_app_apk_title'))
         html.find('.account-modal-split__text').html(Lang.translate('install_app_apk_text'))
-        html.find('.account-modal-split__qr-text').text(Lang.translate('install_app_apk_qr'))
         
         html.find('.simple-button').text(Lang.translate('copy_link_buffer')).on('hover:enter',()=>{
             Utils.copyTextToClipboard(Manifest.apk_link_download, ()=>{

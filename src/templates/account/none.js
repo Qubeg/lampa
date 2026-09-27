@@ -1,10 +1,4 @@
 let html = `<div class="account-modal-split">
-    <div class="account-modal-split__qr">
-        <img class="account-modal-split__qr-img hide" />
-        <div class="account-modal-split__qr-code"></div>
-        <div class="account-modal-split__qr-text">#{account_qr_create}</div>
-    </div>
-
     <div class="account-modal-split__info">
         <div class="account-modal-split__title">#{account_none_title}</div>
         <div class="account-modal-split__text">#{account_create}<br>

@@ -1,7 +1,6 @@
 import Manifest from '../core/manifest'
 import Utils from '../utils/utils'
 import Cache from '../utils/cache'
-import VPN from '../core/vpn'
 import Arrays from '../utils/arrays'
 
 /**
@@ -27,19 +26,17 @@ function init(){
             }
         }).catch(e=>{})
 
-        if(!VPN.is(['ru', 'by'])){
-            Lampa.SettingsApi.addParam({
-                component: 'more',
-                param: {
-                    name: 'lgbt_content_block',
-                    type: 'trigger',
-                    default: false
-                },
-                field: {
-                    name: Lampa.Lang.translate('settings_lgbt_content_block'),
-                }
-            })
-        }
+        Lampa.SettingsApi.addParam({
+            component: 'more',
+            param: {
+                name: 'lgbt_content_block',
+                type: 'trigger',
+                default: false
+            },
+            field: {
+                name: Lampa.Lang.translate('settings_lgbt_content_block'),
+            }
+        })
     }
 }
 

@@ -13,7 +13,6 @@ import Template from '../../../interaction/template'
 import LineModule from '../../../interaction/items/line/module/module'
 import Router from '../../router'
 import Permit from '../../account/permit'
-import VPN from '../../../core/vpn'
 import Keys from '../../tmdb/keys'
 
 

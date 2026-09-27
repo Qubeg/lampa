@@ -76,7 +76,6 @@ import Developer from './interaction/developer'
 import DeviceInput from './interaction/device_input'
 import AppWorker from './utils/worker'
 import Theme from './core/theme'
-import AdManager from './interaction/advert/manager'
 import DB from './utils/db'
 import NavigationBar from './interaction/navigation_bar'
 import Endless from './interaction/endless'
@@ -86,10 +85,8 @@ import Demo from './core/demo'
 import Torrent from './interaction/torrent'
 import Torserver from './interaction/torserver'
 import Speedtest from './interaction/speedtest'
-import VPN from './core/vpn'
 import Processing from './interaction/processing'
 import ParentalControl from './interaction/parental_control'
-import Personal from './core/personal'
 import Sound from './core/sound'
 import Iptv from './core/iptv'
 import Bell from './interaction/bell'
@@ -115,7 +112,6 @@ import ServiceTorserver from './services/torrserver'
 import ServiceWatched from './services/watched'
 import ServiceSettings from './services/settings'
 import ServiceLibs from './services/libs'
-import ServiceMetric from './services/metric'
 import ServiceDeveloper from './services/developer'
 import ServiceRemoteFavorites from './services/remote_favorites'
 import ServiceDMCA from './services/dmca'
@@ -189,12 +185,8 @@ Arrays.extend(window.lampa_settings,{
         blacklist: false,
         // Подписка на актеров
         persons: false,
-        // Вспомогатиленые сервисы на подписку према
-        ads: false,
         // Трейлеры
         trailers: false,
-        // Установка прокси для запросов
-        install_proxy: false,
         // Удаленная конфигурация
         remote_configuration: false
     },
@@ -228,9 +220,6 @@ Arrays.extend(window.lampa_settings,{
 
     // Подключить YouTube API
     youtube: true,
-
-    // Определять гео по IP, иначе будет RU
-    geo: true,
 
     // Использовать поиск зеркал
     mirrors: true,
@@ -354,7 +343,6 @@ function initClass(){
         Speedtest,
         Processing,
         ParentalControl,
-        VPN,
         Bell,
         StorageMenager,
         RemoteHelper,
@@ -517,9 +505,6 @@ function startApp(){
     Mirrors.init()
     LoadingProgress.status('Mirrors init')
 
-    Personal.init()
-    LoadingProgress.status('Personal init')
-
     Head.init()
     LoadingProgress.status('Head init')
 
@@ -592,9 +577,6 @@ function startApp(){
     Theme.init()
     LoadingProgress.status('Theme init')
 
-    AdManager.init()
-    LoadingProgress.status('AdManager init')
-
     NavigationBar.init()
     LoadingProgress.status('NavigationBar init')
 
@@ -659,10 +641,6 @@ function startApp(){
     console.log('App','hash', '{__APP_HASH__}')
     console.log('App','location:', location.href)
 
-    // Записываем uid
-
-    if(!Storage.get('lampa_uid','')) Storage.set('lampa_uid', Utils.uid())
-
     // Ренедрим лампу
 
     Render.app()
@@ -682,9 +660,6 @@ function startApp(){
 
     ServiceSettings.init()
     LoadingProgress.status('ServiceSettings init')
-
-    ServiceMetric.init()
-    LoadingProgress.status('ServiceMetric init')
 
     ServiceRemoteFavorites.init()
     LoadingProgress.status('ServiceRemoteFavorites init')
@@ -797,17 +772,9 @@ function loadTask(){
     })
 
     Task.queue((next)=>{
-        LoadingProgress.status('Proxy initialization')
-
-        LoadingProgress.step(4)
-
-        VPN.task(next)
-    })
-
-    Task.queue((next)=>{
         LoadingProgress.status('Account initialization')
 
-        LoadingProgress.step(5)
+        LoadingProgress.step(4)
 
         Account.task(next)
     })

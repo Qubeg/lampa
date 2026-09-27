@@ -5,14 +5,13 @@ import Bell from '../interaction/bell'
 import DeviceInput from '../interaction/device_input'
 import Storage from '../core/storage/storage'
 import Settings from '../interaction/settings/api'
-import Account from '../core/account/account'
 import Arrays from '../utils/arrays'
 import Manifest from '../core/manifest'
 import Utils from '../utils/utils'
 
 let open_about   = false
 let press_button = 0
-let buttons      = ['enabled','nopremium','nodemo','ads','fps']
+let buttons      = ['enabled','nopremium','nodemo','fps']
 
 let icon = `<svg width="49" height="49" viewBox="0 0 49 49" fill="none" xmlns="http://www.w3.org/2000/svg">
 <rect x="2.41699" y="2.3418" width="44.2686" height="44.2686" rx="8.25" stroke="white" stroke-width="3.5"/>
@@ -81,10 +80,6 @@ function params(){
     })
 
     let display = Arrays.clone(buttons)
-
-    if(!Account.hasPremium()){
-        Arrays.remove(display, 'ads')
-    }
 
     display.forEach(name=>{
         Lampa.SettingsApi.addParam({

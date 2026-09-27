@@ -150,11 +150,7 @@ function addPluginParams(url){
             return encodeURIComponent(Base64.encode(localStorage.getItem(key) || ''))
         })
 
-        if(Account.Permit.access) encode = Utils.addUrlComponent(encode, 'email='+encodeURIComponent(Base64.encode(Account.Permit.account.email)))
-
-        encode = Utils.addUrlComponent(encode, 'logged='+encodeURIComponent(Account.Permit.access ? 'true' : 'false'))
         encode = Utils.addUrlComponent(encode, 'reset='+Math.random())
-        encode = Utils.addUrlComponent(encode, 'origin='+encodeURIComponent(Base64.encode(window.location.host)))
 
         encode = Utils.rewriteIfHTTPS(encode)
     }

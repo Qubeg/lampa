@@ -13,15 +13,6 @@ Object.defineProperty(object, 'app_digital', { get: ()=> parseInt(object.app_ver
 Object.defineProperty(object, 'css_digital', { get: ()=> parseInt(object.css_version.replace(/\./g,'')) })
 
 /**
- * Ссылка на сайт CUB, которая зависит от региона пользователя
- */
-Object.defineProperty(object, 'cub_site', { 
-    get: ()=> {
-        return window.vpn_region == 'ru' ? 'cub.black' : 'cub.best'
-    }
-})
-
-/**
  * Список подключенных плагинов
  */
 Object.defineProperty(object, 'plugins', { 
@@ -98,24 +89,6 @@ Object.defineProperty(object, 'cub_domain', {
 Object.defineProperty(object, 'cub_alive', { 
     get: ()=> {
         return localStorage.getItem('cub_alive') || 'https://' + object.cub_domain
-    } 
-})
-
-/**
- * Ссылка на сайт CUB
- */
-Object.defineProperty(object, 'qr_site', { 
-    get: ()=> {
-        return object.cub_domain+'/img/other/qr-code-strong.png'
-    } 
-})
-
-/**
- * Ссылка на QR для добавления устройства
- */
-Object.defineProperty(object, 'qr_device_add', { 
-    get: ()=> {
-        return object.cub_domain+'/img/other/qr-add-device.png'
     } 
 })
 

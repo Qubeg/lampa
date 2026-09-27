@@ -1078,9 +1078,6 @@ export default {
     account_code_wrong:  'Nieprawidłowy format kodu',
     account_code_where:  'Wejdź na <span class="account-add-device__site">{site}/add</span> i wpisz kod.',
     account_code_input:  'Wpisz kod',
-    account_qr_premium:  'Zeskanuj QR, aby dowiedzieć się o Premium',
-    account_qr_code:  'Zeskanuj QR, aby dodać urządzenie',
-    account_qr_create:  'Zeskanuj QR, aby utworzyć konto',
     account_add_device_title:  'Dodaj urządzenie',
     account_add_device_text:  'Wejdź na <span class="account-modal__site">{site}/add</span>, aby uzyskać kod.',
     account_none_title:  'Nie masz konta?',
@@ -1088,9 +1085,6 @@ export default {
     account_none_include_2:  'Synchronizacja urządzeń',
     account_none_include_3:  'Powiadomienia',
     account_none_include_4:  'Profile użytkowników',
-    account_discuss_add_qr:  'Zeskanuj QR',
-    account_discuss_add_title:  'Chcesz dodać komentarz?',
-    account_discuss_add_text:  'Zeskanuj QR, aby dodać komentarz do filmu.',
     account_discuss_added:  'Dziękujemy za komentarz!',
     account_discuss_added_ready:  'Już dodałeś komentarz.',
 
@@ -1219,12 +1213,6 @@ export default {
 
     https_text:  'Używasz protokołu HTTPS, z którym Lampa działa nieprawidłowo. Dla poprawnego działania użyj adresu HTTP',
 
-    premiere_author_recomend_1:  'Zamów pizzę i przygotuj się na akcję.',
-    premiere_author_recomend_2:  'Impreza dopiero się zaczyna.',
-    premiere_author_recomend_3:  'Przygotuj się na adrenalinę.',
-    premiere_author_recomend_4:  'Gotowy na niezapomniany wieczór?',
-    premiere_author_recomend_5:  'Polecam do obejrzenia.',
-    premiere_title:  'Premiera',
 
     termsofuse_t_01:  'Warunki użytkowania',
     termsofuse_t_02:  'Lampa to narzędzie do przeglądania nowości filmowych...',
@@ -1242,14 +1230,7 @@ export default {
 
     install_app_apk_title:  'Jak zainstalować Lampa na Androidzie',
     install_app_apk_text:  'Zalecamy instalację APK dla stabilności...',
-    install_app_apk_qr:  'Zeskanuj QR, aby pobrać APK',
 
-    ad:  'Reklama',
-    ad_disable:  'Subskrypcja CUB Premium usuwa reklamy.',
-    ad_plugin:  'Reklama z wtyczki',
-    ad_after:  'Reklama za',
-    ad_skip:  'Pomiń',
-    ad_continue_after:  'Odtwarzanie rozpocznie się za',
 
     discuss_rules_title:  'Przestrzegaj zasad i szanuj innych',
     discuss_rules_rule_1:  'Nie używaj samych cyfr.',
@@ -1304,7 +1285,6 @@ export default {
     developer_param_enabled:  'Tryb deweloperski',
     developer_param_nopremium:  'Wyłącz CUB Premium',
     developer_param_nodemo:  'Wyłącz tryb demo',
-    developer_param_ads:  'Pokaż reklamy',
     developer_param_fps:  'Pokaż FPS',
 
     developer_trigger_help_1:  'Prawie',

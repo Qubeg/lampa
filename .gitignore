@@ -4,6 +4,7 @@ build/web/
 dest/
 public/css/
 public/lang/
+plugins/*/css/*.css
 plugins/clear
 plugins/anime
 plugins/strawberry

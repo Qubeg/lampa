@@ -1100,9 +1100,6 @@ export default {
     account_code_wrong: 'Возможно, вы указали неверный формат',
     account_code_where: 'Перейдите на сайт <span class="account-add-device__site">{site}/add</span> и введите указанный там код.',
     account_code_input: 'Ввести код',
-    account_qr_premium: 'Отсканируйте QR-код, чтобы узнать больше о CUB Premium',
-    account_qr_code: 'Отсканируйте QR-код для получения кода добавления устройства',
-    account_qr_create: 'Отсканируйте QR-код, чтобы создать аккаунт',
     account_add_device_title: 'Добавить устройство',
     account_add_device_text: 'Перейдите на сайт по ссылки <span class="account-modal__site">{site}/add</span> чтобы получить код для добавления устройства.',
     account_none_title: 'Еще нет аккаунта?',
@@ -1110,9 +1107,6 @@ export default {
     account_none_include_2: 'Синхронизация между устройствами',
     account_none_include_3: 'Уведомления о новых сериях и релизах',
     account_none_include_4: 'Создание нескольких профилей на одном аккаунте',
-    account_discuss_add_qr: 'Отсканируйте QR-код',
-    account_discuss_add_title: 'Хотите оставить комментарий?',
-    account_discuss_add_text: 'Отсканируйте QR-код, чтобы перейти в приложение и добавить комментарий к этому фильму или сериалу. <br><br> - Возьмите телефон или планшет <br> - Откройте камеру <br> - Наведите на QR-код <br> - Перейдите по ссылки, которая появится на экране',
     account_discuss_added: 'Спасибо за ваш комментарий!',
     account_discuss_added_ready: 'Вы уже оставили комментарий к этому фильму или сериалу.',
 
@@ -1241,12 +1235,6 @@ export default {
 
     https_text: 'Вы используете протокол HTTPS, с которым Lampa работает некорректно. Для корректной работы приложения используйте адрес с протоколом HTTP',
 
-    premiere_author_recomend_1: 'Закажите пиццу и готовьтесь к драйву.',
-    premiere_author_recomend_2: 'Вечеринка только начинается.',
-    premiere_author_recomend_3: 'Подготовьтесь к адреналину.',
-    premiere_author_recomend_4: 'Готовы к незабываемому вечеру?',
-    premiere_author_recomend_5: 'Рекомендую к просмотру.',
-    premiere_title: 'Премьера',
 
     termsofuse_t_01: 'Правила использования',
     termsofuse_t_02: 'Lampa - это удобный инструмент для ознакомления с новинками киноиндустрии, включая фильмы, сериалы, мультфильмы и другую информацию. Для получения информации о фильмах используется открытый источник - сайт themoviedb.org',
@@ -1264,14 +1252,7 @@ export default {
 
     install_app_apk_title: 'Как установить Lampa на Android',
     install_app_apk_text: 'Мы заметили, что для запуска Lampa на Android вы используете MediaStationX. Мы рекомендуем вам установить Lampa в виде APK-приложения. Это обеспечит более стабильную работу и доступ ко всем функциям приложения. <br><br>Перейдите в группу <span class="account-modal__site">@lampa_group</span> в Телеграме, чтобы скачать последнюю версию APK и инструкции по установке.',
-    install_app_apk_qr: 'Отсканируйте QR-код, чтобы скачать Lampa APK',
 
-    ad: 'Реклама',
-    ad_disable: 'Подписавшись на CUB Premium, вы забудете о рекламе.',
-    ad_plugin: 'Реклама от плагина',
-    ad_after: 'Реклама через',
-    ad_skip: 'Пропустить',
-    ad_continue_after: 'Просмотр начнется через',
 
     discuss_rules_title: 'Следуйте правилам и уважайте других — создаём комфорт вместе!',
     discuss_rules_rule_1: 'Не используйте слова, состоящие только из цифр.',
@@ -1326,7 +1307,6 @@ export default {
     developer_param_enabled: 'Режим разработчика',
     developer_param_nopremium: 'Отключить CUB Premium',
     developer_param_nodemo: 'Отключить демонстрационный режим',
-    developer_param_ads: 'Показывать рекламу',
     developer_param_fps: 'Показывать FPS',
 
     developer_trigger_help_1: 'Почти догадались :)',

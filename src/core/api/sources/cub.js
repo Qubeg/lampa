@@ -13,7 +13,6 @@ import Template from '../../../interaction/template'
 import LineModule from '../../../interaction/items/line/module/module'
 import ContentRows from '../../content_rows'
 import Permit from '../../account/permit'
-import VPN from '../../../core/vpn'
 import Keys from '../../tmdb/keys'
 
 let network = new Reguest()
@@ -35,9 +34,7 @@ function url(u, params = {}){
         }
     }
 
-    let email = Storage.get('account','{}').email || ''
-
-    return Utils.addUrlComponent(Utils.protocol() + 'tmdb.'+Manifest.cub_domain+'/' + u, 'email=' + encodeURIComponent(email))
+    return Utils.protocol() + 'tmdb.'+Manifest.cub_domain+'/' + u
 }
 
 function add(u, params){
@@ -596,7 +593,7 @@ function discussGet(params, oncomplite, onerror){
 }
 
 function reactionsAdd(params, oncomplite, onerror){
-    network.silent(Utils.protocol() + Manifest.cub_domain + '/api/reactions/add/' + params.method + '_' + params.id + '/' + params.type + '?uid=' + Storage.get('lampa_uid','none'), oncomplite, onerror)
+    network.silent(Utils.protocol() + Manifest.cub_domain + '/api/reactions/add/' + params.method + '_' + params.id + '/' + params.type, oncomplite, onerror)
 }
 
 function menuCategory(params, oncomplite){

@@ -1,8 +1,6 @@
 import Template from '../../interaction/template'
 import Modal from '../../interaction/modal'
 import Controller from '../controller'
-import Utils from '../../utils/utils'
-import Manifest from '../manifest'
 import Device from './device'
 import Permit from './permit'
 import Platform from '../platform'
@@ -26,21 +24,7 @@ function account(){
     let enabled = Controller.enabled().name
     let html    = Template.js('account_none')
 
-    if(Platform.tv()){
-        let code = html.find('.account-modal-split__qr-code')
-        let img  = html.find('.account-modal-split__qr-img')
-
-        html.addClass('layer--' + (Platform.mouse() ? 'wheight' : 'height'))
-
-        Utils.qrcode('https://' +  Manifest.cub_site + '/#signup', code, ()=>{
-            code.remove()
-            img.removeClass('hide')
-
-            Utils.imgLoad(img, Utils.protocol() + Manifest.qr_site, ()=>{
-                img.addClass('loaded')
-            })
-        })
-    }
+    if(Platform.tv()) html.addClass('layer--' + (Platform.mouse() ? 'wheight' : 'height'))
     else html.addClass('account-modal-split--mobile')
 
     Modal.open({
@@ -73,13 +57,7 @@ function premium(){
     let enabled = Controller.enabled().name
     let html    = Template.js('account_premium')
 
-    if(Platform.tv()){
-        html.addClass('layer--' + (Platform.mouse() ? 'wheight' : 'height'))
-        
-        Utils.qrcode('https://' +  Manifest.cub_site + '/premium', html.find('.account-modal-split__qr-code'), ()=>{
-            html.find('.account-modal-split__qr').remove()
-        })
-    }
+    if(Platform.tv()) html.addClass('layer--' + (Platform.mouse() ? 'wheight' : 'height'))
     else html.addClass('account-modal-split--mobile')
 
     if(!Permit.token){

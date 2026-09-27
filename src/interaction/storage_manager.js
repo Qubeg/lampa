@@ -22,7 +22,7 @@ function open(params = {}){
     html = $('<div></div>')
 
     let keys = Object.keys(localStorage)
-    let hide = ['parental_', 'vast_', 'account_']
+    let hide = ['parental_', 'account_']
 
     if(window.lampa_settings.hide_important_params){
         keys = keys.filter(key=>{

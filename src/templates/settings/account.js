@@ -1,11 +1,7 @@
 let html = `<div>
-    <div class="ad-server" style="background: transparent">
-        <div class="ad-server__text" style="padding: 0">
-            <div style="margin-bottom: 1em; color: #d8c39a">https://{site}</div>
-            #{settings_cub_sync_descr}
-        </div>
-        <div class="ad-server__qr">
-        </div>
+    <div class="settings-param-text">
+        <div style="margin-bottom: 1em; color: #d8c39a">https://{site}</div>
+        #{settings_cub_sync_descr}
     </div>
 
     <div class="settings-param selector" data-type="toggle" data-name="account_use">

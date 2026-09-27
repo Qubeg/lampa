@@ -1128,12 +1128,6 @@ export default {
 
     https_text: "Používáte protokol HTTPS, se kterým Lampa nefunguje správně. Pro správnou funkci aplikace použijte adresu s protokolem HTTP",
 
-    premiere_author_recomend_1: "Objednejte si pizzu a připravte se na jízdu.",
-    premiere_author_recomend_2: "Párty teprve začíná.",
-    premiere_author_recomend_3: "Připravte se na adrenalin.",
-    premiere_author_recomend_4: "Připraveni na nezapomenutelný večer?",
-    premiere_author_recomend_5: "Doporučuji ke sledování.",
-    premiere_title: "Premiéra",
 
     termsofuse_t_01: "Pravidla používání",
     termsofuse_t_02: "Lampa je užitečný nástroj pro seznámení s novinkami filmového průmyslu, včetně filmů, seriálů, animovaných filmů a dalších informací. Pro získání informací o filmech se používá otevřený zdroj - web themoviedb.org",
@@ -1151,14 +1145,8 @@ export default {
 
     install_app_apk_title: 'Jak nainstalovat Lampu na Android',
     install_app_apk_text: 'Všimli jsme si, že k spuštění Lampy na Androidu používáte MediaStationX. Doporučujeme nainstalovat Lampu jako aplikaci APK. Tím zajistíte stabilnější provoz a přístup ke všem funkcím aplikace. <br><br>Přejděte do telegramové skupiny <span class="account-modal__site">@lampa_group</span> a stáhněte si nejnovější APK a pokyny k instalaci.',
-    install_app_apk_qr: 'Naskenujte QR kód a stáhněte si APK Lampy',
     copy_link_buffer: 'Kopírovat odkaz',
 
-    ad: "Reklama",
-    ad_disable: "Předplatným CUB Premium zapomenete na reklamu.",
-    ad_after: "Reklama za",
-    ad_skip: "Přeskočit",
-    ad_continue_after: "Sledování začne za",
 
     discuss_rules_title: "Dodržujte pravidla a respektujte ostatní — vytváříme pohodlí společně!",
     discuss_rules_rule_1: "Nepoužívejte slova složená pouze z čísel.",
@@ -1208,7 +1196,6 @@ export default {
     install_extension_rule_5: '- Instalujte pouze pluginy z důvěryhodných zdrojů. Pokud máte pochybnosti o bezpečnosti nebo legálnosti pluginu, raději jej neinstalujte.',
     install_extension_rule_6: 'LAMPA nepodporuje ani neschvaluje pluginy související s pirátským obsahem.',
     install_extension_rule_7: 'Pokračováním potvrzujete, že rozumíte těmto rizikům.',
-    ad_plugin: 'Reklama z pluginu',
 
     terminal_title: 'Terminál',
     terminal_no_access: 'Bez přístupu',
@@ -1223,9 +1210,6 @@ export default {
     title_navigation: 'Navigace',
     title_page: 'Stránka',
     title_person_about: 'O osobě',
-    account_qr_premium: 'Naskenujte QR kód a zjistěte více o CUB Premium',
-    account_qr_code: 'Naskenujte QR kód a získejte kód pro propojení zařízení',
-    account_qr_create: 'Naskenujte QR kód a vytvořte účet',
     account_add_device_title: 'Přidat zařízení',
     account_add_device_text: 'Přejděte na <span class="account-modal__site">{site}/add</span> a získejte kód pro přidání zařízení.',
     account_none_title: 'Ještě nemáte účet?',
@@ -1248,16 +1232,12 @@ export default {
     developer_param_enabled: 'Režim vývojáře',
     developer_param_nopremium: 'Vypnout CUB Premium',
     developer_param_nodemo: 'Vypnout demo režim',
-    developer_param_ads: 'Zobrazovat reklamy',
     developer_param_fps: 'Zobrazovat FPS',
     developer_trigger_help_1: 'Téměř jste to uhodli :)',
     developer_trigger_help_2: 'Ještě trochu :)',
     developer_trigger_help_3: 'Opravdu chcete vstoupit do režimu vývojáře?',
     developer_trigger_help_4: 'Režim vývojáře aktivován',
     settings_param_navigation_touch: 'Dotykové ovládání',
-    account_discuss_add_qr: 'Naskenujte QR kód',
-    account_discuss_add_title: 'Chcete přidat komentář?',
-    account_discuss_add_text: 'Naskenujte QR kód a otevřete aplikaci, kde můžete přidat komentář k tomuto filmu nebo seriálu. <br><br> - Vezměte telefon nebo tablet <br> - Otevřete fotoaparát <br> - Namiřte na QR kód <br> - Otevřete odkaz, který se objeví na obrazovce',
     account_discuss_added: 'Děkujeme za váš komentář!',
     account_discuss_added_ready: 'Komentář k tomuto filmu nebo seriálu jste již přidali.',
     remote_helper_long: 'Podržte tlačítko (OK) pro otevření menu',
