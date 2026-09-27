@@ -1219,6 +1219,8 @@ export default {
 
     change_source_on_cub: 'Сменить источник на CUB',
 
+    card_episode_last: 'Ожидается',
+
     tv_status_returning_series: 'Онгоинг',
     tv_status_planned: 'Запланировано',
     tv_status_in_production: 'В производстве',

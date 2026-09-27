@@ -1074,6 +1074,8 @@ export default {
     install_app_apk_text: 'We noticed that you use MediaStationX to run Lampa on Android. We recommend installing Lampa as an APK app. This will ensure more stable operation and access to all the app\'s features. <br><br>Go to the <span class="account-modal__site">@lampa_group</span> Telegram group to download the latest APK and installation instructions.',
     copy_link_buffer: 'Copy link',
 
+    card_episode_last: 'Upcoming',
+
     tv_status_returning_series: 'Returning series',
     tv_status_planned: 'Planned',
     tv_status_in_production: 'In Production',

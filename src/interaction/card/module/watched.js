@@ -1,5 +1,6 @@
 import Timeline from '../../timeline'
 import Timetable from '../../../core/timetable'
+import Api from '../../../core/api/api'
 import Lang from '../../../core/lang'
 import Storage from '../../../core/storage/storage'
 import Utils from '../../../utils/utils'
@@ -25,6 +26,7 @@ export default {
     },
 
     onUpdate: function(){
+        this.watched_gen = (this.watched_gen || 0) + 1
         this.watched_checked = false
 
         this.watched_wrap?.remove()
@@ -33,122 +35,144 @@ export default {
     },
 
     onWatched: function(){
-        if(!Storage.field('card_episodes')) return
-        
-        if(!this.watched_checked){
-            let data = this.data
+        if(!Storage.field('card_episodes') || this.watched_checked) return
 
-            function get(callback){
-                if(data.original_name) Timetable.get(data, callback)
-                else callback([])
+        this.watched_checked = true
+
+        let data = this.data
+        let self = this
+        let gen  = this.watched_gen || 0
+
+        let render = (episodes, current, more, finale)=>{
+            if(gen != (self.watched_gen || 0)) return
+
+            let index = episodes.findIndex(ep=>ep.episode_number == current.episode)
+            let source = index >= 0 ? episodes.slice(index) : [{
+                season_number: current.season,
+                episode_number: current.episode,
+                name: Lang.translate('full_episode') + ' ' + current.episode
+            }]
+
+            if(more && more.length) source = [source[0]].concat(more)
+
+            let soon = []
+            let next = source.filter(ep=>{
+                if(!ep.air_date) return false
+
+                if(Utils.countDays(Date.now(), ep.air_date)){
+                    soon.push(ep)
+
+                    return false
+                }
+
+                return true
+            }).slice(0,3)
+
+            if(!next.length) next = [source[0]]
+
+            if(soon.length && next.length < 3 && !next.find(item=>item.episode_number == soon[0].episode_number)) next.push(soon[0])
+
+            let note = ''
+
+            if(finale && data.original_name){
+                note = data.status == 'Ended' ? Lang.translate('tv_status_ended') : Lang.translate('card_episode_last')
             }
 
-            get((episodes, from_db)=>{
-                let viewed
+            let wrap = Template.js('card_watched',{})
 
-                // Нужно разбить 1й сезон на сезоны и взять последний сезон
-                if(episodes[0] && episodes[0].season_number == 1){
-                    let seasons = Utils.splitEpisodesIntoSeasons(episodes)
+            next.forEach(ep=>{
+                let div  = document.createElement('div')
+                let span = document.createElement('span')
+                let days = ep.air_date ? Utils.countDays(Date.now(), ep.air_date) : 0
+                let line = current.view && (ep.episode_number == current.episode || !ep.episode_number)
 
-                    episodes = seasons[Object.keys(seasons).pop()]
-                }
+                div.addClass('card-watched__item')
+                div.append(span)
 
-                let Draw = ()=>{
-                    episodes.forEach(ep=>{
-                        let hash = Utils.hash([ep.season_number, ep.season_number > 10 ? ':' : '',ep.episode_number,data.original_title].join(''))
-                        let view = Timeline.view(hash)
+                span.innerText = (ep.episode_number ? ep.episode_number + ' - ' : '') + (days > 0 ? Lang.translate('full_episode_days_left') + ': ' + days : (ep.name || Lang.translate('noname')))
 
-                        if(view.percent) viewed = {ep, view}
-                    })
+                if(line){
+                    div.append(Timeline.render(current.view)[0])
 
-                    // Пытаемся найти последний просмотренный из истории последнего просмотра
-                    if(!viewed && data.original_name){
-                        let last  = Storage.get('online_watched_last', '{}')
-                        let filed = last[Utils.hash(data.original_title)]
+                    if(note){
+                        let mark = document.createElement('div')
 
-                        if(filed && filed.episode){
-                            viewed = {
-                                ep: {
-                                    episode_number: filed.episode,
-                                    name: Lang.translate('full_episode') + ' ' + filed.episode,
-                                },
-                                view: Timeline.view(Utils.hash([filed.season, filed.season > 10 ? ':' : '',filed.episode,data.original_title].join('')))
-                            }
-                        }
-                    }
-
-                    // Если это фильм и не нашли просмотренное, то проверим по прогрессу просмотра из таймлайна
-                    if(!viewed && !data.original_name){
-                        let time = Timeline.watched(data, true)
-
-                        if(time.percent) {
-                            viewed = {
-                                ep: {
-                                    name: Lang.translate('title_viewed') + ' ' + (time.time ? Utils.secondsToTimeHuman(time.time) : time.percent + '%'),
-                                },
-                                view: time
-                            }
-                        }
-                    }
-
-                    // Если это сериал и не нашли просмотренное, то проверим по прогрессу просмотра из таймлайна
-                    if(!viewed && data.original_name){
-                        let any = Timeline.watched(data, true).pop()
-
-                        if(any) viewed = {ep: {
-                            name: Lang.translate('full_episode') + ' ' + any.ep,
-                        }, view: any.view}
-                    }
-
-                    if(viewed){
-                        let soon = []
-                        let next = episodes.slice(episodes.indexOf(viewed.ep)).filter(ep=>ep.air_date).filter(ep=>{
-                            let date = Utils.parseToDate(ep.air_date).getTime()
-
-                            if(date > Date.now()) soon.push(ep)
-
-                            return date < Date.now()
-                        }).slice(0,5)
-
-                        if(next.length == 0) next = [viewed.ep]
-
-                        if(soon.length && next.length < 5 && !next.find(n=>n.episode_number == soon[0].episode_number)) next.push(soon[0])
-
-                        let wrap = Template.js('card_watched',{})
-
-                        next.forEach(ep=>{
-                            let div  = document.createElement('div')
-                            let span = document.createElement('span')
-                            let date = Utils.parseToDate(ep.air_date)
-                            let now  = Date.now()
-                            let days = Math.ceil((date.getTime() - now)/(24*60*60*1000))
-
-                            div.addClass('card-watched__item')
-                            div.append(span)
-
-                            span.innerText = (ep.episode_number ?  ep.episode_number + ' - ' : '') + (days > 0 ? Lang.translate('full_episode_days_left') + ': ' + days : (ep.name || Lang.translate('noname')))
-
-                            if(ep == viewed.ep) div.append(Timeline.render(viewed.view)[0])
-
-                            wrap.find('.card-watched__body').append(div)
-                        })
-
-                        this.watched_wrap = wrap
-
-                        let view = this.html.find('.card__view')
-
-                        view.insertBefore(wrap, view.firstChild)
+                        mark.addClass('card-watched__note')
+                        mark.innerText = note
+                        div.append(mark)
                     }
                 }
 
-                Draw()
+                wrap.find('.card-watched__body').append(div)
             })
 
-            this.watched_checked = true
+            if(self.watched_wrap) self.watched_wrap.remove()
+
+            self.watched_wrap = wrap
+
+            let view = self.html.find('.card__view')
+
+            view.insertBefore(wrap, view.firstChild)
         }
+
+        if(!data.original_name){
+            let time = Timeline.watched(data, true)
+
+            if(!time.percent && !(time.time > 0)) return
+
+            render([{
+                name: Lang.translate('title_viewed') + ' ' + (time.time ? Utils.secondsToTimeHuman(time.time) : time.percent + '%')
+            }], {view: time})
+
+            return
+        }
+
+        let record = Timetable.all().find(item=>item.id == data.id)
+        let filed  = Storage.get('online_watched_last', '{}')[Utils.hash(data.original_name)]
+        let total  = Math.max(data.number_of_seasons || 1, record && record.season || 1, filed && filed.season || 1)
+        let found
+
+        // В расписании только последний сезон, номер смотрим по уже записанному прогрессу
+        for(let season = total; season >= 1 && !found; season--){
+            let view
+            let episode = 0
+
+            for(let number = 1; number <= 100; number++){
+                let time = Timeline.watchedEpisode(data, season, number, true)
+
+                if(time.percent){
+                    view = time
+                    episode = number
+                }
+            }
+
+            if(view) found = {season, episode, view}
+        }
+
+        if(!found) return
+
+        // Список серий режется в Api.seasons
+        Api.seasons(data, [found.season], (result)=>{
+            if(gen != (self.watched_gen || 0)) return
+
+            let episodes = (result[found.season] && result[found.season].episodes) || []
+            let last = episodes.reduce((max, ep)=>Math.max(max, ep.episode_number || 0), 0)
+
+            if(!(last && found.episode >= last)) return render(episodes, found)
+
+            Api.seasons(data, [found.season + 1], (next)=>{
+                if(gen != (self.watched_gen || 0)) return
+
+                let more = (next[found.season + 1] && next[found.season + 1].episodes) || []
+
+                render(episodes, found, more, !more.length)
+            })
+        })
     },
 
     onDestroy: function(){
+        this.watched_gen = (this.watched_gen || 0) + 1
+
         Lampa.Listener.remove('state:changed', this.listenerWatched)
     }
 }

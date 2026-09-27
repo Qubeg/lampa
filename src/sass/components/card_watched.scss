@@ -50,7 +50,15 @@
 
         .time-line{
             margin-top: 0.5em;
+            margin-bottom: 0.5em;
         }
+    }
+
+    &__note{
+        margin-top: 0.45em;
+        padding-top: 0.55em;
+        border-top: 1px solid #6b6b6bba;
+        color: #fff;
     }
 }
 
