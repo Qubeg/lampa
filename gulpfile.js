@@ -49,13 +49,18 @@ var docFolder = './build/doc/';
 
 var isDebugEnabled = false;
 
-function merge(done) {
+/**
+ * Собирает бандл в dest/app.js.
+ * Поток возвращается, чтобы gulp дождался записи файла.
+ * @return {NodeJS.ReadWriteStream}
+ */
+function merge() {
     let plugins = [babel({
         babelHelpers: 'bundled',
         presets: ['@babel/preset-env']
     }), commonjs, nodeResolve, worker()]
 
-    rollup({
+    return rollup({
         // Point to the entry file
         input: srcFolder+"app.js",
 
@@ -90,8 +95,6 @@ function merge(done) {
       .pipe(replace(/return kIsNodeJS/g, "return false"))
       // Where to send the output file
       .pipe(dest(dstFolder));
-      
-    done();
 }
 
 function bubbleFile(name){
@@ -327,9 +330,6 @@ function uglify_task() {
         .pipe(replace('{__APP_HASH__}', getFileHash(dstFolder + '/app.js')))
         .pipe(replace('{__APP_BUILD__}', full_date))
         .pipe(concat('app.min.js')).pipe(dest(dstFolder));
-
-
-    return src([dstFolder+'app.js']).pipe(concat('app.min.js')).pipe(dest(dstFolder));
 }
 
 function test(done){
@@ -410,9 +410,9 @@ function buildDoc(done){
     done()
 }
 
-exports.pack_webos   = series(sync_webos, uglify_task, public_webos, index_webos);
-exports.pack_tizen   = series(sync_tizen, uglify_task, public_tizen, index_tizen);
-exports.pack_github  = series(sync_github, uglify_task, public_github, write_manifest, index_github);
+exports.pack_webos   = series(merge, sass_task, lang_task, sync_webos, uglify_task, public_webos, index_webos);
+exports.pack_tizen   = series(merge, sass_task, lang_task, sync_tizen, uglify_task, public_tizen, index_tizen);
+exports.pack_github  = series(merge, sass_task, lang_task, sync_github, uglify_task, public_github, write_manifest, index_github);
 exports.pack_plugins = series(plugin_sass, plugins);
 exports.test         = series(test);
 exports.default = parallel(watch, browser_sync);
