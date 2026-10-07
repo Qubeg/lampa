@@ -466,6 +466,7 @@ function full(params, oncomplite, onerror){
 
     get('3/'+params.method+'/'+params.id+'?api_key='+TMDBApi.key()+'&append_to_response=content_ratings,release_dates,external_ids,keywords,alternative_titles,images&include_image_language='+image_languages+'&language='+Storage.field('tmdb_lang'),params,(json)=>{
         if(json.status_code) return status.stop(),onerror()
+		if(json.blocked && window.lampa_settings.disable_features.dmca) return status.stop(),TMDB.full(params, oncomplite, onerror)
 
         json.source = 'cub'
 		

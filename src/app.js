@@ -170,7 +170,7 @@ Arrays.extend(window.lampa_settings,{
     // Отключить фитчи куба и лампы
     disable_features: {
         // Блокировку карточек
-        dmca: false,
+        dmca: true,
         // Блокировка ЛГБТ-контента
         lgbt: false,
         // Реакции
