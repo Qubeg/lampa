@@ -677,7 +677,8 @@ function play(data){
     if(data.quality){
         // Если качество одно, то удаляем объект качества, чтобы не показывать панель выбора качества
         if(Arrays.getKeys(data.quality).length == 1) delete data.quality
-        else{
+        // Качество выбрал пользователь, ссылка уже на нем
+        else if(!data.quality_switched){
             let quality_url = getUrlQuality(data.quality, false)
 
             if(quality_url){

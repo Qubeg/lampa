@@ -59,7 +59,8 @@ function component(object){
 
             Api.seasons(object.card, [season],(v)=>{
                 if(v[season] && v[season].episodes){
-                    object.seasons_count = v[season].seasons_count || Utils.countSeasons(object.card)
+                    // Разбивка 1го сезона по датам не видит настоящих сезонов TMDB
+                    object.seasons_count = Math.max(v[season].seasons_count || 0, Utils.countSeasons(object.card))
 
                     Arrays.extend(v[season], {
                         params: {

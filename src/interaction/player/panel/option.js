@@ -306,10 +306,13 @@ function setLevels(levels, current){
  * @param {String} url
  */
 function setQualitys(qs, url){
+    // Без качеств выбор сбрасывается: его займут уровни HLS нового видео
+    qualitys = qs || false
+
+    Html.elem('quality').text('auto')
+
     if(qs){
         Html.elem('quality').toggleClass('hide', false)
-
-        qualitys = qs
 
         for(let i in qs){
             let qa = qs[i]
